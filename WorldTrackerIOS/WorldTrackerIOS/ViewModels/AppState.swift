@@ -21,16 +21,20 @@ final class AppState: ObservableObject {
         visit(for: countryId).isVisited
     }
     
-    func setVisited(_ countryId: String, isVisited: Bool) {
+    func setVisited(_ countryId: String,
+                    isVisited: Bool,
+                    visitedDate: Date? = nil) {
+
         var v = visit(for: countryId)
         v.isVisited = isVisited
-        if isVisited && v.visitedDate == nil {
-            v.visitedDate = Date()
-        }
-        if !isVisited {
+
+        if isVisited {
+            v.visitedDate = visitedDate ?? v.visitedDate ?? Date()
+        } else {
             v.visitedDate = nil
-            v.notes = ""
+            // keep notes
         }
+
         visits[countryId] = v
     }
     
