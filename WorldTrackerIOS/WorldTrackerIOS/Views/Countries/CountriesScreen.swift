@@ -29,6 +29,15 @@ struct CountriesScreen: View {
                     }
                 }
             }
+            .overlay {
+                if vm.groupedByContinent.isEmpty {
+                    ContentUnavailableView(
+                        "No results",
+                        systemImage: "magnifyingglass",
+                        description: Text("Try a different search term.")
+                    )
+                }
+            }
             .navigationTitle("Countries")
             .searchable(text: $vm.searchText, prompt: "Search countries")
         }
@@ -42,12 +51,21 @@ private struct CountryRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(country.flagEmoji).font(.title2)
-            Text(country.name).foregroundStyle(.primary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(country.name)
+                    .foregroundStyle(.primary)
+            }
+
             Spacer()
+
             if isVisited {
                 Text("Visited")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.caption2)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.green.opacity(0.15))
+                    .clipShape(Capsule())
             }
         }
         .padding(.vertical, 4)
