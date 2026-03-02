@@ -6,15 +6,17 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct WorldTrackerIOSApp: App {
     @StateObject private var appState = AppState()
-    
+
     var body: some Scene {
         WindowGroup {
             RootTabView()
                 .environmentObject(appState)
         }
+        .modelContainer(for: [VisitEntity.self])
     }
 }
