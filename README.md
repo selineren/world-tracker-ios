@@ -101,7 +101,7 @@ Tested:
 ### Phase 4 – Networking
 - Add remote data source
 - Sync local and remote persistence
-- Introduce authentication (if required)
+- Introduce authentication
 
 ---
 
