@@ -10,13 +10,25 @@ import SwiftData
 
 @main
 struct WorldTrackerIOSApp: App {
-    @StateObject private var appState = AppState()
+    private let container: ModelContainer
+    @StateObject private var appState: AppState
+
+    init() {
+        do {
+            container = try ModelContainer(for: VisitEntity.self)
+            let context = ModelContext(container)
+            let repo = SwiftDataVisitRepository(context: context)
+            _appState = StateObject(wrappedValue: AppState(repository: repo))
+        } catch {
+            fatalError("Failed to create SwiftData container: \(error)")
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
             RootTabView()
                 .environmentObject(appState)
         }
-        .modelContainer(for: [VisitEntity.self])
+        .modelContainer(container)
     }
 }

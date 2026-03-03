@@ -29,6 +29,19 @@ final class SwiftDataVisitRepository: VisitRepository {
         // default “not visited”
         return Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "")
     }
+    
+    func allVisits() throws -> [Visit] {
+        let descriptor = FetchDescriptor<VisitEntity>()
+        let entities = try context.fetch(descriptor)
+        return entities.map {
+            Visit(
+                countryId: $0.countryId,
+                isVisited: $0.isVisited,
+                visitedDate: $0.visitedDate,
+                notes: $0.notes
+            )
+        }
+    }
 
     func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date?) throws {
         let entity = try fetchOrCreateEntity(countryId: countryId)
