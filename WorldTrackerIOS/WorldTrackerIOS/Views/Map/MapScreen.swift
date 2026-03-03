@@ -6,23 +6,23 @@
 //
 
 import SwiftUI
+import MapKit
 
 struct MapScreen: View {
+    @State private var cameraPosition: MapCameraPosition = .region(
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 20, longitude: 0), // roughly world center
+            span: MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 120)
+        )
+    )
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 12) {
-                Image(systemName: "map")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.secondary)
-
-                Text("Map")
-                    .font(.title).bold()
-
-                Text("Map view will be added in Phase 2.")
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle("Map")
+            Map(position: $cameraPosition)
+                .mapStyle(.standard(elevation: .realistic))
+                .ignoresSafeArea(edges: .bottom)
+                .navigationTitle("Map")
+                .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
