@@ -7,11 +7,10 @@
 
 import Foundation
 
-struct Country: Identifiable {
-    let id: String          // ISO code ("FR", "US")
+struct Country: Identifiable, Codable {
+    let id: String
     let name: String
     let continent: Continent
-    let latitude: Double
-    let longitude: Double
     let flagEmoji: String
+    let centroid: Coordinate
 }
