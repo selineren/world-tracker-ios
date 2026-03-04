@@ -11,6 +11,7 @@ import Combine
 @MainActor
 final class AppState: ObservableObject {
     @Published private(set) var visits: [String: Visit] = [:]
+    @Published private(set) var visitedCountryIDs: Set<String> = []
 
     private let repository: VisitRepository
 
@@ -23,10 +24,11 @@ final class AppState: ObservableObject {
         do {
             let stored = try repository.allVisits()
             self.visits = Dictionary(uniqueKeysWithValues: stored.map { ($0.countryId, $0) })
+            self.visitedCountryIDs = Set(stored.filter { $0.isVisited }.map { $0.countryId })
         } catch {
-            // In production you might log this; for now keep app usable
             print("⚠️ Failed to load visits from SwiftData: \(error)")
             self.visits = [:]
+            self.visitedCountryIDs = []
         }
     }
 
@@ -46,11 +48,15 @@ final class AppState: ObservableObject {
             v.visitedDate = visitedDate ?? v.visitedDate ?? Date()
         } else {
             v.visitedDate = nil
-            // keep notes
         }
 
         // Update UI immediately
         visits[countryId] = v
+        if isVisited {
+            visitedCountryIDs.insert(countryId)
+        } else {
+            visitedCountryIDs.remove(countryId)
+        }
 
         // Persist
         do {
@@ -63,19 +69,14 @@ final class AppState: ObservableObject {
     func updateNotes(_ countryId: String, notes: String) {
         var v = visit(for: countryId)
         v.notes = notes
-
-        // Update UI immediately
         visits[countryId] = v
 
-        // Persist
         do {
             try repository.updateNotes(countryId, notes: notes)
         } catch {
             print("⚠️ Failed to persist updateNotes: \(error)")
         }
     }
-
-    // MARK: - Stats
 
     var visitedCount: Int {
         visits.values.filter { $0.isVisited }.count
