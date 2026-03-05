@@ -19,8 +19,11 @@ struct MapScreen: View {
         )
     )
 
-    var visitedCountries: [Country] {
-        countries.filter { appState.visitedCountryIDs.contains($0.id) }
+    @State private var selectedCountry: Country? = nil
+
+    private var visitedCountries: [Country] {
+        countries.filter { appState.isVisited($0.id) }
+        // or: countries.filter { appState.visitedCountryIDs.contains($0.id) }
     }
 
     var body: some View {
@@ -29,10 +32,10 @@ struct MapScreen: View {
                 ForEach(visitedCountries) { country in
                     Annotation(country.name, coordinate: country.centroid.clLocation) {
                         VStack(spacing: 2) {
-                            Text(country.flagEmoji)
-                            Image(systemName: "mappin.circle.fill")
-                                .font(.title3)
+                            Text(country.flagEmoji).font(.title3)
+                            Image(systemName: "mappin.circle.fill").font(.title3)
                         }
+                        .onTapGesture { selectedCountry = country }
                     }
                 }
             }
@@ -40,6 +43,9 @@ struct MapScreen: View {
             .ignoresSafeArea(edges: .bottom)
             .navigationTitle("Map")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(item: $selectedCountry) { country in
+                CountryDetailScreen(country: country)
+            }
         }
     }
 }
