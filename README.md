@@ -1,118 +1,143 @@
-# WorldTracker iOS
+# World Tracker iOS
 
-WorldTracker is an iOS application built with SwiftUI following a clean MVVM architecture.
+World Tracker is an iOS application that allows users to track the countries they have visited around the world.
 
-The goal of the project is to track visited countries, manage visit dates and notes, and progressively expand into map visualization and networking.
+Users can:
+- mark countries as visited
+- store visit dates and notes
+- visualize visited countries on a world map
+- track their travel statistics
 
----
-
-## 🏗 Architecture Overview
-
-The project follows a layered architecture:
-
-UI (SwiftUI Views)
-    ↓
-AppState (ObservableObject – UI state & actions)
-    ↓
-VisitRepository (protocol abstraction)
-    ↓
-SwiftDataVisitRepository (SwiftData implementation)
-    ↓
-SwiftData (VisitEntity local persistence)
-
-### Key Principles
-
-- Separation of concerns
-- Repository pattern for data abstraction
-- Local-first persistence (SwiftData)
-- SwiftUI reactive state management
-- Clean phase-based development
+The project was developed incrementally through multiple phases to focus on architecture, persistence, and feature development.
 
 ---
 
-## 📦 Phase 1 – UI Foundation (Dummy Data)
+# Tech Stack
 
-Goal: Establish complete UI structure and navigation using mock data.
+- Swift
+- SwiftUI
+- SwiftData
+- MapKit
+- MVVM Architecture
+- Repository Pattern
 
-Included:
-- MVVM project structure
-- Country list UI
+---
+
+# Architecture Overview
+
+The project follows a **clean MVVM architecture** with a repository layer separating UI logic from persistence.
+
+### View Layer
+SwiftUI views:
+- Countries list
 - Country detail screen
-- Visited toggle
-- Visit date selection
-- Notes editor
-- Tab navigation
-- Map placeholder
-- Stats placeholder
-- UI polish & empty states
+- Map screen
+- Stats screen
 
-Result:
-✔ Full app flow implemented  
-✔ Clean UI architecture  
-✔ Ready for persistence integration  
+### State Management
+`AppState` is responsible for:
+
+- managing UI state
+- coordinating data updates
+- communicating with the repository layer
+
+### Repository Layer
+
+`VisitRepository` protocol abstracts the persistence layer.
+
+Implementation:
+- `SwiftDataVisitRepository`
+
+This allows the app to switch persistence mechanisms in the future without changing UI code.
+
+### Persistence
+
+Visited country data is stored locally using **SwiftData**.
+
+Stored fields include:
+
+- countryId
+- visited status
+- visit date
+- notes
 
 ---
 
-## 💾 Phase 2 – Data Architecture & Local Persistence
+# Development Phases
 
-Goal: Ensure stable local data handling before networking.
+## Phase 1 — UI Foundation
+
+Goal: build the full UI structure using mock data.
 
 Implemented:
-- SwiftData model container setup
-- `VisitEntity` persistence model
-- Repository pattern abstraction
-- `SwiftDataVisitRepository` implementation
+- Countries list
+- Country detail screen
+- visit toggle
+- visit date picker
+- notes editor
+- basic tab navigation
+- map and stats placeholders
+
+---
+
+## Phase 2 — Data Architecture & Persistence
+
+Goal: introduce local persistence.
+
+Implemented:
+- SwiftData setup
+- VisitEntity model
+- VisitRepository protocol
+- SwiftDataVisitRepository implementation
 - AppState integration with repository
-- Persistent visited state
-- Persistent visit date
-- Persistent notes
-- QA validation & edge case handling
-
-Result:
-✔ Data persists across relaunch  
-✔ No duplicate entities  
-✔ Clean separation between UI and persistence  
-✔ Architecture ready for expansion  
+- data persistence across app launches
 
 ---
 
-## 🧪 Testing
+## Phase 3 — Map Integration
 
-Persistence behavior validated in:
-- `PHASE2_QA.md`
+Goal: visualize visited countries geographically.
 
-Tested:
-- Toggle visited ON/OFF
-- Custom visit date
-- Notes persistence
-- Duplicate protection
-- Stats accuracy
-- Relaunch stability
+Implemented:
+- MapKit integration
+- visited countries rendered as map annotations
+- annotation tap opens CountryDetailScreen
+- map persistence using SwiftData data
+- map QA validation
 
----
-
-## 🚀 Next Phases
-
-### Phase 3 – Map Visualization
-- Integrate MapKit
-- Highlight visited countries
-- Sync map state with persistence layer
-
-### Phase 4 – Networking
-- Add remote data source
-- Sync local and remote persistence
-- Introduce authentication
+See `PHASE3_QA.md` for full test documentation.
 
 ---
 
-## 📱 Minimum Requirements
+# How to Run
 
+Requirements:
+
+- Xcode 15+
 - iOS 17+
-- SwiftData
-- SwiftUI
+- macOS Sonoma or later
+
+Steps:
+
+1. Clone the repository
+2. Open `WorldTrackerIOS.xcodeproj`
+3. Select a simulator or connected device
+4. Run the project
 
 ---
 
-## 👩‍💻 Author
+# Future Work (Phase 4)
 
-Built as part of an iOS internship project focused on clean architecture and progressive feature development.
+Next development phase will introduce:
+
+- Firebase Authentication
+- Firestore cloud sync for visited countries
+- async/await networking layer
+- improved map UX
+- expanded statistics dashboard
+
+---
+
+# License
+
+This project is for educational and internship purposes.
