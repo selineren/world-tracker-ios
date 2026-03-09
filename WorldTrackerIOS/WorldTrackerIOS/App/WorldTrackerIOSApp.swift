@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import FirebaseCore
 
 @main
 struct WorldTrackerIOSApp: App {
@@ -14,6 +15,8 @@ struct WorldTrackerIOSApp: App {
     @StateObject private var appState: AppState
 
     init() {
+        FirebaseApp.configure()
+
         do {
             container = try ModelContainer(for: VisitEntity.self)
             let context = ModelContext(container)
