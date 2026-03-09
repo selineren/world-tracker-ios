@@ -101,32 +101,37 @@ struct StatsScreen: View {
                         }
                     }
                 }
-
                 Section("Recent visits") {
                     if recentVisits.isEmpty {
                         Text("No visits yet.")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(recentVisits.prefix(10), id: \.country.id) { item in
-                            HStack(spacing: 12) {
-                                Text(item.country.flagEmoji)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.country.name)
-                                    Text(item.country.continent.displayName)
+                            NavigationLink {
+                                CountryDetailScreen(country: item.country)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Text(item.country.flagEmoji)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(item.country.name)
+                                        Text(item.country.continent.displayName)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(formattedDate(item.date))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-                                Spacer()
-                                Text(formattedDate(item.date))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                .padding(.vertical, 2)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.vertical, 2)
                         }
                     }
                 }
             }
             .navigationTitle("Stats")
+            .listStyle(.insetGrouped)
         }
     }
 
