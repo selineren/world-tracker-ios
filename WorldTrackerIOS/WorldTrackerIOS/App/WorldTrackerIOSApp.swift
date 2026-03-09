@@ -11,6 +11,8 @@ import FirebaseCore
 
 @main
 struct WorldTrackerIOSApp: App {
+    @StateObject private var authService = AuthService()
+
     private let container: ModelContainer
     @StateObject private var appState: AppState
 
@@ -31,6 +33,7 @@ struct WorldTrackerIOSApp: App {
         WindowGroup {
             RootTabView()
                 .environmentObject(appState)
+                .environmentObject(authService)
         }
         .modelContainer(container)
     }
