@@ -22,12 +22,13 @@ final class SwiftDataVisitRepository: VisitRepository {
                 countryId: entity.countryId,
                 isVisited: entity.isVisited,
                 visitedDate: entity.visitedDate,
-                notes: entity.notes
+                notes: entity.notes,
+                updatedAt: entity.updatedAt
             )
         }
 
         // default “not visited”
-        return Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "")
+        return Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "", updatedAt: Date())
     }
     
     func allVisits() throws -> [Visit] {
@@ -38,7 +39,8 @@ final class SwiftDataVisitRepository: VisitRepository {
                 countryId: $0.countryId,
                 isVisited: $0.isVisited,
                 visitedDate: $0.visitedDate,
-                notes: $0.notes
+                notes: $0.notes,
+                updatedAt: $0.updatedAt
             )
         }
     }
@@ -55,6 +57,8 @@ final class SwiftDataVisitRepository: VisitRepository {
             entity.visitedDate = nil
             // keep notes (better UX) — do NOT wipe them
         }
+        
+        entity.updatedAt = Date()
 
         try context.save()
     }
@@ -62,7 +66,17 @@ final class SwiftDataVisitRepository: VisitRepository {
     func updateNotes(_ countryId: String, notes: String) throws {
         let entity = try fetchOrCreateEntity(countryId: countryId)
         entity.notes = notes
+        entity.updatedAt = Date()
         try context.save()
+    }
+    
+    func upsert(_ visit: Visit) throws {
+            let entity = try fetchOrCreateEntity(countryId: visit.countryId)
+            entity.isVisited = visit.isVisited
+            entity.visitedDate = visit.visitedDate
+            entity.notes = visit.notes
+            entity.updatedAt = visit.updatedAt
+            try context.save()
     }
 
     func visitedCount() throws -> Int {

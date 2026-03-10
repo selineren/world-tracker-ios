@@ -118,12 +118,20 @@ final class FirestoreVisitRepository {
         } else {
             visitedDate = nil
         }
+        
+        let updatedAt: Date
+        if let timestamp = data["updatedAt"] as? Timestamp {
+            updatedAt = timestamp.dateValue()
+        } else {
+            throw FirestoreVisitRepositoryError.invalidData
+        }
 
         return Visit(
             countryId: countryId,
             isVisited: isVisited,
             visitedDate: visitedDate,
-            notes: notes
+            notes: notes,
+            updatedAt: updatedAt
         )
     }
 

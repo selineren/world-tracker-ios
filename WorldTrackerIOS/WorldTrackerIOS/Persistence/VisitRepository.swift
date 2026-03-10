@@ -12,5 +12,6 @@ protocol VisitRepository {
     func allVisits() throws -> [Visit]
     func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date?) throws
     func updateNotes(_ countryId: String, notes: String) throws
+    func upsert(_ visit: Visit) throws
     func visitedCount() throws -> Int
 }
