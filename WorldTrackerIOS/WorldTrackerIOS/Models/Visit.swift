@@ -12,4 +12,5 @@ struct Visit {
     var isVisited: Bool
     var visitedDate: Date?
     var notes: String
+    var updatedAt: Date
 }
