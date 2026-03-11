@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AuthScreen: View {
     @EnvironmentObject private var authService: AuthService
+    @EnvironmentObject private var appState: AppState
 
     @State private var email = ""
     @State private var password = ""
@@ -61,6 +62,8 @@ struct AuthScreen: View {
             } else {
                 try await authService.signIn(email: email, password: password)
             }
+
+            await appState.syncWithCloud()
         } catch {
             errorMessage = error.localizedDescription
         }

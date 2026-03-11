@@ -1,5 +1,5 @@
 //
-//  RootTabVİew.swift
+//  RootTabView.swift
 //  WorldTrackerIOS
 //
 //  Created by seren on 25.02.2026.
@@ -9,6 +9,7 @@ import SwiftUI
 
 struct RootTabView: View {
     @EnvironmentObject private var authService: AuthService
+    @EnvironmentObject private var appState: AppState
 
     var body: some View {
         TabView {
@@ -36,6 +37,11 @@ struct RootTabView: View {
             }
             .tabItem {
                 Label("Account", systemImage: "person.circle")
+            }
+        }
+        .task {
+            if authService.isSignedIn {
+                await appState.syncWithCloud()
             }
         }
     }

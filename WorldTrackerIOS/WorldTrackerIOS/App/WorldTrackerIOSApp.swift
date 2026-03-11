@@ -22,8 +22,20 @@ struct WorldTrackerIOSApp: App {
         do {
             container = try ModelContainer(for: VisitEntity.self)
             let context = ModelContext(container)
-            let repo = SwiftDataVisitRepository(context: context)
-            _appState = StateObject(wrappedValue: AppState(repository: repo))
+            
+            let localRepo = SwiftDataVisitRepository(context: context)
+            let cloudRepo = FirestoreVisitRepository()
+            let syncService = SyncService(
+                localRepository: localRepo,
+                cloudRepository: cloudRepo
+            )
+            
+            _appState = StateObject(
+                wrappedValue: AppState(
+                    repository: localRepo,
+                    syncService: syncService
+                )
+            )
         } catch {
             fatalError("Failed to create SwiftData container: \(error)")
         }
