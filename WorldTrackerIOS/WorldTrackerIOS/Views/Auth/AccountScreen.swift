@@ -10,6 +10,7 @@ import SwiftUI
 struct AccountScreen: View {
     @EnvironmentObject private var authService: AuthService
     @State private var errorMessage: String?
+    @EnvironmentObject private var appState: AppState
 
     var body: some View {
         NavigationStack {
@@ -22,6 +23,7 @@ struct AccountScreen: View {
                     Button("Sign out", role: .destructive) {
                         do {
                             try authService.signOut()
+                            appState.clearLocalDataAfterSignOut()
                         } catch {
                             errorMessage = error.localizedDescription
                         }

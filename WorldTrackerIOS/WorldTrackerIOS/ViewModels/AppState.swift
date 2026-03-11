@@ -14,9 +14,11 @@ final class AppState: ObservableObject {
     @Published private(set) var visitedCountryIDs: Set<String> = []
 
     private let repository: VisitRepository
+    private let syncService: SyncService?
 
-    init(repository: VisitRepository) {
+    init(repository: VisitRepository, syncService: SyncService? = nil) {
         self.repository = repository
+        self.syncService = syncService
         loadFromPersistence()
     }
 
@@ -32,6 +34,21 @@ final class AppState: ObservableObject {
         }
     }
 
+    func refreshFromPersistence() {
+        loadFromPersistence()
+    }
+    
+    func syncWithCloud() async {
+        guard let syncService else { return }
+
+        do {
+            try await syncService.syncVisits()
+            loadFromPersistence()
+        } catch {
+            print("⚠️ Sync failed: \(error)")
+        }
+    }
+    
     func visit(for countryId: String) -> Visit {
         visits[countryId] ?? Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "", updatedAt: Date())
     }
@@ -49,6 +66,7 @@ final class AppState: ObservableObject {
         } else {
             v.visitedDate = nil
         }
+        v.updatedAt = Date()
 
         // Update UI immediately
         visits[countryId] = v
@@ -61,6 +79,9 @@ final class AppState: ObservableObject {
         // Persist
         do {
             try repository.setVisited(countryId, isVisited: isVisited, visitedDate: v.visitedDate)
+            Task {
+                await syncWithCloud()
+            }
         } catch {
             print("⚠️ Failed to persist setVisited: \(error)")
         }
@@ -69,10 +90,14 @@ final class AppState: ObservableObject {
     func updateNotes(_ countryId: String, notes: String) {
         var v = visit(for: countryId)
         v.notes = notes
+        v.updatedAt = Date()
         visits[countryId] = v
 
         do {
             try repository.updateNotes(countryId, notes: notes)
+            Task {
+                await syncWithCloud()
+            }
         } catch {
             print("⚠️ Failed to persist updateNotes: \(error)")
         }
@@ -80,5 +105,21 @@ final class AppState: ObservableObject {
 
     var visitedCount: Int {
         visits.values.filter { $0.isVisited }.count
+    }
+    
+    func clearLocalState() {
+        visits = [:]
+        visitedCountryIDs = []
+    }
+    
+    func clearLocalDataAfterSignOut() {
+        do {
+            if let localRepository = repository as? SwiftDataVisitRepository {
+                try localRepository.deleteAllVisits()
+            }
+            clearLocalState()
+        } catch {
+            print("⚠️ Failed to clear local data after sign out: \(error)")
+        }
     }
 }

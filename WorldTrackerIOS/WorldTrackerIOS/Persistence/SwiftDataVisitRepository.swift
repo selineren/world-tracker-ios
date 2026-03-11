@@ -44,6 +44,17 @@ final class SwiftDataVisitRepository: VisitRepository {
             )
         }
     }
+    
+    func deleteAllVisits() throws {
+        let descriptor = FetchDescriptor<VisitEntity>()
+        let entities = try context.fetch(descriptor)
+
+        for entity in entities {
+            context.delete(entity)
+        }
+
+        try context.save()
+    }
 
     func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date?) throws {
         let entity = try fetchOrCreateEntity(countryId: countryId)
@@ -71,12 +82,12 @@ final class SwiftDataVisitRepository: VisitRepository {
     }
     
     func upsert(_ visit: Visit) throws {
-            let entity = try fetchOrCreateEntity(countryId: visit.countryId)
-            entity.isVisited = visit.isVisited
-            entity.visitedDate = visit.visitedDate
-            entity.notes = visit.notes
-            entity.updatedAt = visit.updatedAt
-            try context.save()
+        let entity = try fetchOrCreateEntity(countryId: visit.countryId)
+        entity.isVisited = visit.isVisited
+        entity.visitedDate = visit.visitedDate
+        entity.notes = visit.notes
+        entity.updatedAt = visit.updatedAt
+        try context.save()
     }
 
     func visitedCount() throws -> Int {
