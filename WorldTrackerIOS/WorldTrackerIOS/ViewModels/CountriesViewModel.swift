@@ -12,16 +12,30 @@ import Combine
 final class CountriesViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published private(set) var countries: [Country] = []
+    @Published private(set) var isLoading = false
+    @Published private(set) var loadError: String?
     
-    private let service = MockCountryService()
+    private let service = CountryDataService.shared
     
     init() {
         load()
     }
     
     func load() {
-        countries = service.loadCountries()
-            .sorted { $0.name < $1.name }
+        isLoading = true
+        loadError = nil
+        
+        // Load countries
+        Task(priority: .userInitiated) {
+            let loadedCountries = service.loadCountries()
+            
+            self.countries = loadedCountries
+            self.isLoading = false
+            
+            if loadedCountries.isEmpty {
+                self.loadError = "No countries found in GeoJSON file"
+            }
+        }
     }
     
     var filteredCountries: [Country] {
