@@ -41,11 +41,7 @@ struct RootTabView: View {
         }
         .task {
             if authService.isSignedIn {
-                do {
-                    try await appState.syncWithCloud()
-                } catch {
-                    print("⚠️ Initial sync failed in RootTabView: \(error)")
-                }
+                await appState.syncWithCloud()
             }
         }
     }

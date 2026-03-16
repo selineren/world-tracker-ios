@@ -13,10 +13,7 @@ struct MapScreen: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var authService: AuthService
     
-    @State private var isRefreshing = false
-    @State private var lastSyncDate: Date?
-    @State private var syncError: String?
-    @State private var showingStats = true
+    @State private var showSyncStatus = true
 
     var body: some View {
         NavigationStack {
@@ -42,19 +39,25 @@ struct MapScreen: View {
                 .padding()
                 
                 // Sync status indicator (top center)
-                if isRefreshing {
+                if showSyncStatus {
                     VStack {
-                        syncStatusBanner
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                        Spacer()
-                    }
-                }
-                
-                // Error banner (top)
-                if let error = syncError {
-                    VStack {
-                        errorBanner(message: error)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                        SyncStatusView(
+                            status: appState.syncStatus,
+                            onRetry: {
+                                Task {
+                                    await appState.retrySyncIfNeeded()
+                                }
+                            },
+                            onDismiss: {
+                                withAnimation {
+                                    showSyncStatus = false
+                                }
+                            }
+                        )
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        
                         Spacer()
                     }
                 }
@@ -73,11 +76,36 @@ struct MapScreen: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    refreshButton
+                    HStack(spacing: 12) {
+                        // Compact sync status in toolbar
+                        SyncStatusToolbarItem(status: appState.syncStatus)
+                        
+                        refreshButton
+                    }
                 }
             }
             .task(id: authService.user?.uid) {
                 await handleAuthStateChange()
+            }
+            .onChange(of: appState.syncStatus) { oldValue, newValue in
+                // Show status banner when status changes
+                if case .idle = oldValue, case .idle = newValue {
+                    // Don't show for idle -> idle
+                } else {
+                    withAnimation {
+                        showSyncStatus = true
+                    }
+                    
+                    // Auto-hide success message after 3 seconds
+                    if case .success = newValue {
+                        Task {
+                            try? await Task.sleep(for: .seconds(3))
+                            withAnimation {
+                                showSyncStatus = false
+                            }
+                        }
+                    }
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 Task {
@@ -86,6 +114,8 @@ struct MapScreen: View {
             }
         }
     }
+    
+    @State private var showingStats = true
     
     // MARK: - Stats Card
     
@@ -121,8 +151,6 @@ struct MapScreen: View {
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
     
-    // MARK: - Style Picker Button
-    
     // MARK: - Legend Card
     
     private var legendCard: some View {
@@ -155,49 +183,7 @@ struct MapScreen: View {
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
     
-    // MARK: - Banners
-    
-    private var syncStatusBanner: some View {
-        HStack(spacing: 8) {
-            ProgressView()
-                .tint(.white)
-            Text("Syncing...")
-                .font(.subheadline)
-                .foregroundColor(.white)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color.blue.opacity(0.9))
-        .cornerRadius(8)
-        .padding(.top, 8)
-    }
-    
-    private func errorBanner(message: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.white)
-            Text(message)
-                .font(.subheadline)
-                .foregroundColor(.white)
-            
-            Spacer()
-            
-            Button {
-                withAnimation {
-                    syncError = nil
-                }
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.white.opacity(0.8))
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color.red.opacity(0.9))
-        .cornerRadius(8)
-        .padding(.horizontal)
-        .padding(.top, 8)
-    }
+    // MARK: - Refresh Button
     
     private var refreshButton: some View {
         Button {
@@ -207,15 +193,13 @@ struct MapScreen: View {
         } label: {
             Image(systemName: "arrow.clockwise")
         }
-        .disabled(isRefreshing || !authService.isSignedIn)
+        .disabled(appState.isSyncing || !authService.isSignedIn)
     }
     
     // MARK: - Data Management
     
     private func handleAuthStateChange() async {
         guard authService.isSignedIn else {
-            syncError = nil
-            lastSyncDate = nil
             return
         }
         await refreshMapData()
@@ -226,35 +210,8 @@ struct MapScreen: View {
             return
         }
         
-        withAnimation {
-            isRefreshing = true
-            syncError = nil
-        }
-        
-        do {
-            appState.refreshFromPersistence()
-            try await appState.syncWithCloud()
-            appState.refreshFromPersistence()
-            lastSyncDate = Date()
-            
-            withAnimation {
-                isRefreshing = false
-            }
-        } catch {
-            withAnimation {
-                isRefreshing = false
-                syncError = "Sync failed: \(error.localizedDescription)"
-            }
-            
-            Task {
-                try? await Task.sleep(for: .seconds(5))
-                withAnimation {
-                    if syncError != nil {
-                        syncError = nil
-                    }
-                }
-            }
-        }
+        appState.refreshFromPersistence()
+        await appState.syncWithCloud()
     }
 }
 
