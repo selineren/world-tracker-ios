@@ -63,7 +63,7 @@ struct AuthScreen: View {
                 try await authService.signIn(email: email, password: password)
             }
 
-            await appState.syncWithCloud()
+            try await appState.syncWithCloud()
         } catch {
             errorMessage = error.localizedDescription
         }

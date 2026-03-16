@@ -12,6 +12,9 @@ import Combine
 final class AppState: ObservableObject {
     @Published private(set) var visits: [String: Visit] = [:]
     @Published private(set) var visitedCountryIDs: Set<String> = []
+    @Published private(set) var isSyncing = false
+    @Published private(set) var lastSyncDate: Date?
+    @Published private(set) var lastSyncError: Error?
 
     private let repository: VisitRepository
     private let syncService: SyncService?
@@ -19,7 +22,7 @@ final class AppState: ObservableObject {
     init(repository: VisitRepository, syncService: SyncService? = nil) {
         self.repository = repository
         self.syncService = syncService
-        loadFromPersistence()
+        // Don't auto-load on init - wait for auth state
     }
 
     private func loadFromPersistence() {
@@ -38,15 +41,51 @@ final class AppState: ObservableObject {
         loadFromPersistence()
     }
     
-    func syncWithCloud() async {
-        guard let syncService else { return }
+    func syncWithCloud() async throws {
+        guard let syncService else { 
+            print("⚠️ Sync service not available")
+            return 
+        }
+
+        // Prevent concurrent syncs
+        guard !isSyncing else {
+            print("⚠️ Sync already in progress")
+            return
+        }
+
+        isSyncing = true
+        lastSyncError = nil
 
         do {
             try await syncService.syncVisits()
             loadFromPersistence()
+            lastSyncDate = Date()
+            lastSyncError = nil
+            isSyncing = false
         } catch {
+            isSyncing = false
             print("⚠️ Sync failed: \(error)")
+            lastSyncError = error
+            throw error // Re-throw so caller can handle
         }
+    }
+    
+    /// Called when user signs in - loads data from local storage and syncs with cloud
+    func handleSignIn() async {
+        // Load from local storage first
+        loadFromPersistence()
+        
+        // Then sync with cloud to get latest data
+        do {
+            try await syncWithCloud()
+        } catch {
+            print("⚠️ Initial sync after sign in failed: \(error)")
+        }
+    }
+    
+    /// Called when user signs out - clears all local data
+    func handleSignOut() {
+        clearLocalDataAfterSignOut()
     }
     
     func visit(for countryId: String) -> Visit {
@@ -80,7 +119,7 @@ final class AppState: ObservableObject {
         do {
             try repository.setVisited(countryId, isVisited: isVisited, visitedDate: v.visitedDate)
             Task {
-                await syncWithCloud()
+                try? await syncWithCloud()
             }
         } catch {
             print("⚠️ Failed to persist setVisited: \(error)")
@@ -96,7 +135,7 @@ final class AppState: ObservableObject {
         do {
             try repository.updateNotes(countryId, notes: notes)
             Task {
-                await syncWithCloud()
+                try? await syncWithCloud()
             }
         } catch {
             print("⚠️ Failed to persist updateNotes: \(error)")

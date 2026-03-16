@@ -12,6 +12,7 @@ import FirebaseAuth
 @MainActor
 final class AuthService: ObservableObject {
     @Published private(set) var user: User?
+    @Published private(set) var authState: AuthState = .unknown
 
     var userEmail: String {
         user?.email ?? "Unknown user"
@@ -21,9 +22,22 @@ final class AuthService: ObservableObject {
 
     init() {
         user = Auth.auth().currentUser
+        authState = user != nil ? .signedIn : .signedOut
 
         authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            self?.user = user
+            guard let self else { return }
+            
+            let previousUser = self.user
+            self.user = user
+            
+            // Detect actual state changes
+            if previousUser?.uid != user?.uid {
+                if user != nil {
+                    self.authState = .signedIn
+                } else {
+                    self.authState = .signedOut
+                }
+            }
         }
     }
 
@@ -49,3 +63,9 @@ final class AuthService: ObservableObject {
         try Auth.auth().signOut()
     }
 }
+enum AuthState {
+    case unknown
+    case signedIn
+    case signedOut
+}
+

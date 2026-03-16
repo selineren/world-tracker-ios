@@ -46,7 +46,25 @@ struct WorldTrackerIOSApp: App {
             RootTabView()
                 .environmentObject(appState)
                 .environmentObject(authService)
+                .task(id: authService.authState) {
+                    await handleAuthStateChange()
+                }
         }
         .modelContainer(container)
+    }
+    
+    @MainActor
+    private func handleAuthStateChange() async {
+        switch authService.authState {
+        case .signedIn:
+            // User signed in - load data and sync
+            await appState.handleSignIn()
+        case .signedOut:
+            // User signed out - clear data
+            appState.handleSignOut()
+        case .unknown:
+            // Initial state - do nothing
+            break
+        }
     }
 }
