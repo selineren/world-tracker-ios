@@ -139,7 +139,8 @@ final class FirestoreVisitRepository {
 
     private func getDocument(from ref: DocumentReference) async throws -> DocumentSnapshot {
         try await withCheckedThrowingContinuation { continuation in
-            ref.getDocument { snapshot, error in
+            // Use source: .server to force network fetch, not cache
+            ref.getDocument(source: .server) { snapshot, error in
                 if let error {
                     continuation.resume(throwing: self.mapError(error))
                     return
@@ -157,14 +158,27 @@ final class FirestoreVisitRepository {
 
     private func getDocuments(from ref: CollectionReference) async throws -> QuerySnapshot {
         try await withCheckedThrowingContinuation { continuation in
-            ref.getDocuments { snapshot, error in
+            // Use source: .server to force network fetch, not cache
+            ref.getDocuments(source: .server) { snapshot, error in
                 if let error {
+                    print("🔥 Firestore error: \(error)")
                     continuation.resume(throwing: self.mapError(error))
                     return
                 }
 
                 guard let snapshot else {
+                    print("🔥 Firestore: No snapshot returned")
                     continuation.resume(throwing: FirestoreVisitRepositoryError.invalidData)
+                    return
+                }
+                
+                // Check if this data came from cache despite requesting server
+                print("🔥 Firestore snapshot: \(snapshot.documents.count) docs, metadata.isFromCache: \(snapshot.metadata.isFromCache)")
+                
+                // If we requested server but got cache, and we're offline, throw error
+                if snapshot.metadata.isFromCache {
+                    print("⚠️ Received cached data when server was requested - treating as offline")
+                    continuation.resume(throwing: FirestoreVisitRepositoryError.offline)
                     return
                 }
 

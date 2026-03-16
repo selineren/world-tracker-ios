@@ -8,21 +8,71 @@
 import Foundation
 import Combine
 
+enum SyncStatus: Equatable {
+    case idle
+    case syncing
+    case success(Date)
+    case error(String, isOffline: Bool)
+    
+    static func == (lhs: SyncStatus, rhs: SyncStatus) -> Bool {
+        switch (lhs, rhs) {
+        case (.idle, .idle), (.syncing, .syncing):
+            return true
+        case let (.success(d1), .success(d2)):
+            return d1 == d2
+        case let (.error(msg1, offline1), .error(msg2, offline2)):
+            return msg1 == msg2 && offline1 == offline2
+        default:
+            return false
+        }
+    }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     @Published private(set) var visits: [String: Visit] = [:]
     @Published private(set) var visitedCountryIDs: Set<String> = []
-    @Published private(set) var isSyncing = false
-    @Published private(set) var lastSyncDate: Date?
-    @Published private(set) var lastSyncError: Error?
+    @Published private(set) var syncStatus: SyncStatus = .idle
+    @Published private(set) var isOffline = false
 
     private let repository: VisitRepository
     private let syncService: SyncService?
+    private let networkMonitor: NetworkMonitor
+    private var cancellables = Set<AnyCancellable>()
 
-    init(repository: VisitRepository, syncService: SyncService? = nil) {
+    init(
+        repository: VisitRepository, 
+        syncService: SyncService? = nil,
+        networkMonitor: NetworkMonitor? = nil
+    ) {
         self.repository = repository
         self.syncService = syncService
+        self.networkMonitor = networkMonitor ?? .shared
+        
+        // Monitor network status
+        self.networkMonitor.$isConnected
+            .sink { [weak self] isConnected in
+                self?.isOffline = !isConnected
+            }
+            .store(in: &cancellables)
+        
         // Don't auto-load on init - wait for auth state
+    }
+    
+    // Computed properties for convenience
+    var isSyncing: Bool {
+        if case .syncing = syncStatus { return true }
+        return false
+    }
+    
+    var lastSyncDate: Date? {
+        if case .success(let date) = syncStatus { return date }
+        return nil
+    }
+    
+    var lastSyncError: String? {
+        if case .error(let message, _) = syncStatus { return message }
+        return nil
     }
 
     private func loadFromPersistence() {
@@ -41,7 +91,7 @@ final class AppState: ObservableObject {
         loadFromPersistence()
     }
     
-    func syncWithCloud() async throws {
+    func syncWithCloud(showStatus: Bool = true) async {
         guard let syncService else { 
             print("⚠️ Sync service not available")
             return 
@@ -52,21 +102,46 @@ final class AppState: ObservableObject {
             print("⚠️ Sync already in progress")
             return
         }
-
-        isSyncing = true
-        lastSyncError = nil
+        
+        print("🔄 syncWithCloud called (showStatus: \(showStatus))")
+        
+        // Set syncing state immediately (before network check)
+        if showStatus {
+            syncStatus = .syncing
+            print("📊 Status set to: syncing")
+        }
 
         do {
-            try await syncService.syncVisits()
+            try await syncService.syncVisits(withRetry: true)
             loadFromPersistence()
-            lastSyncDate = Date()
-            lastSyncError = nil
-            isSyncing = false
+            if showStatus {
+                syncStatus = .success(Date())
+                print("✅ Status set to: success")
+            }
+        } catch let error as SyncError where error == .noConnection {
+            print("⚠️ Sync failed: No connection")
+            if showStatus {
+                syncStatus = .error("No internet connection", isOffline: true)
+                print("📊 Status set to: offline error")
+            }
         } catch {
-            isSyncing = false
             print("⚠️ Sync failed: \(error)")
-            lastSyncError = error
-            throw error // Re-throw so caller can handle
+            let message = error.localizedDescription
+            if showStatus {
+                syncStatus = .error(message, isOffline: false)
+                print("📊 Status set to: error - \(message)")
+            }
+        }
+    }
+    
+    func retrySyncIfNeeded() async {
+        print("🔁 retrySyncIfNeeded called, current status: \(syncStatus)")
+        // Retry for any error state (including offline - user might have turned WiFi back on)
+        if case .error = syncStatus {
+            print("🔁 Retrying sync...")
+            await syncWithCloud()
+        } else {
+            print("⚠️ Not retrying - not in error state")
         }
     }
     
@@ -76,16 +151,13 @@ final class AppState: ObservableObject {
         loadFromPersistence()
         
         // Then sync with cloud to get latest data
-        do {
-            try await syncWithCloud()
-        } catch {
-            print("⚠️ Initial sync after sign in failed: \(error)")
-        }
+        await syncWithCloud()
     }
     
     /// Called when user signs out - clears all local data
     func handleSignOut() {
         clearLocalDataAfterSignOut()
+        syncStatus = .idle
     }
     
     func visit(for countryId: String) -> Visit {
@@ -119,7 +191,7 @@ final class AppState: ObservableObject {
         do {
             try repository.setVisited(countryId, isVisited: isVisited, visitedDate: v.visitedDate)
             Task {
-                try? await syncWithCloud()
+                await syncWithCloud(showStatus: false)
             }
         } catch {
             print("⚠️ Failed to persist setVisited: \(error)")
@@ -135,7 +207,7 @@ final class AppState: ObservableObject {
         do {
             try repository.updateNotes(countryId, notes: notes)
             Task {
-                try? await syncWithCloud()
+                await syncWithCloud(showStatus: false)
             }
         } catch {
             print("⚠️ Failed to persist updateNotes: \(error)")
