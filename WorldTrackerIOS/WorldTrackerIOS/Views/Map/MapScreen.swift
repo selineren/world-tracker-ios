@@ -21,7 +21,7 @@ struct MapScreen: View {
                 VisitedCountriesMapView(
                     visitedCountryIDs: appState.visitedCountryIDs
                 )
-                .ignoresSafeArea(edges: .bottom)
+                .edgesIgnoringSafeArea(.top)
                 
                 // Overlay UI Elements
                 VStack(alignment: .leading, spacing: 12) {

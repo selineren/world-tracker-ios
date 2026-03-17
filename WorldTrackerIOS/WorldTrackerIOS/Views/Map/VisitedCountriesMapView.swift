@@ -18,6 +18,9 @@ struct VisitedCountriesMapView: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView(frame: .zero)
         mapView.delegate = context.coordinator
+        
+        // Ensure proper rendering
+        mapView.isOpaque = true
 
         if #available(iOS 16.0, *) {
             let config = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
@@ -35,11 +38,19 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         )
         mapView.setRegion(region, animated: false)
 
-        let overlaysByCountry = CountryBoundaryService.shared.loadCountryOverlays()
-        context.coordinator.overlaysByCountry = overlaysByCountry
-
-        let allOverlays = overlaysByCountry.values.flatMap { $0 }
-        mapView.addOverlays(allOverlays)
+        // Load overlays asynchronously to prevent main thread blocking
+        let coordinator = context.coordinator
+        DispatchQueue.global(qos: .userInitiated).async { [weak coordinator] in
+            let overlaysByCountry = CountryBoundaryService.shared.getCountryOverlays()
+            
+            // Update map on main thread
+            DispatchQueue.main.async { [weak coordinator] in
+                guard let coordinator = coordinator else { return }
+                coordinator.overlaysByCountry = overlaysByCountry
+                let allOverlays = overlaysByCountry.values.flatMap { $0 }
+                mapView.addOverlays(allOverlays)
+            }
+        }
 
         return mapView
     }
@@ -48,18 +59,30 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         // Update the coordinator's visited countries set
         context.coordinator.visitedCountryIDs = visitedCountryIDs
         
-        // Force refresh all overlays to pick up new colors
-        for overlay in mapView.overlays {
-            if let renderer = mapView.renderer(for: overlay) as? MKOverlayPathRenderer {
-                context.coordinator.configure(renderer: renderer, for: overlay)
-                renderer.setNeedsDisplay()
-            }
+        // Only update if we have overlays loaded
+        guard !mapView.overlays.isEmpty, 
+              !context.coordinator.overlaysByCountry.isEmpty else { 
+            return 
         }
+        
+        // Update renderers only if needed (throttled by coordinator)
+        context.coordinator.updateRenderersIfNeeded(for: mapView)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
-        var visitedCountryIDs: Set<String>
+        var visitedCountryIDs: Set<String> {
+            didSet {
+                // Track if visited countries actually changed
+                if oldValue != visitedCountryIDs {
+                    needsRendererUpdate = true
+                }
+            }
+        }
         var overlaysByCountry: [String: [MKOverlay]] = [:]
+        
+        // Cache overlay -> countryID lookups for performance
+        private var overlayCountryCache: [ObjectIdentifier: String] = [:]
+        private var needsRendererUpdate = false
 
         init(visitedCountryIDs: Set<String>) {
             self.visitedCountryIDs = visitedCountryIDs
@@ -98,12 +121,34 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         }
 
         private func countryID(for overlay: MKOverlay) -> String? {
+            let overlayID = ObjectIdentifier(overlay)
+            
+            // Check cache first
+            if let cached = overlayCountryCache[overlayID] {
+                return cached
+            }
+            
+            // Find and cache
             for (countryID, overlays) in overlaysByCountry {
                 if overlays.contains(where: { $0 === overlay }) {
+                    overlayCountryCache[overlayID] = countryID
                     return countryID
                 }
             }
             return nil
+        }
+        
+        func updateRenderersIfNeeded(for mapView: MKMapView) {
+            guard needsRendererUpdate else { return }
+            needsRendererUpdate = false
+            
+            // Refresh renderers
+            for overlay in mapView.overlays {
+                if let renderer = mapView.renderer(for: overlay) as? MKOverlayPathRenderer {
+                    configure(renderer: renderer, for: overlay)
+                    renderer.setNeedsDisplay()
+                }
+            }
         }
     }
 }
