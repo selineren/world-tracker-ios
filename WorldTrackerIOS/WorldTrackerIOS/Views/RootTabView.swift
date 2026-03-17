@@ -39,6 +39,14 @@ struct RootTabView: View {
                 Label("Account", systemImage: "person.circle")
             }
         }
+        .onAppear {
+            // Ensure tab bar is always visible and properly styled
+            let appearance = UITabBarAppearance()
+            appearance.configureWithDefaultBackground()
+            
+            UITabBar.appearance().standardAppearance = appearance
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+        }
         .task {
             if authService.isSignedIn {
                 await appState.syncWithCloud()

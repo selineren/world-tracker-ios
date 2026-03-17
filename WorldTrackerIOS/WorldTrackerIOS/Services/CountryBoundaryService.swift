@@ -11,9 +11,27 @@ import MapKit
 final class CountryBoundaryService {
     static let shared = CountryBoundaryService()
 
+    private var cachedOverlays: [String: [MKOverlay]]?
+    private let cacheLock = NSLock()
+    
     private init() {}
-
-    func loadCountryOverlays() -> [String: [MKOverlay]] {
+    
+    /// Thread-safe access to overlays with lazy loading
+    func getCountryOverlays() -> [String: [MKOverlay]] {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        
+        if let cached = cachedOverlays {
+            return cached
+        }
+        
+        // Load and cache
+        let overlays = performLoad()
+        cachedOverlays = overlays
+        return overlays
+    }
+    
+    private func performLoad() -> [String: [MKOverlay]] {
         guard let url = Bundle.main.url(forResource: "world_countries", withExtension: "geojson") else {
             print("⚠️ world_countries.geojson not found in bundle")
             return [:]

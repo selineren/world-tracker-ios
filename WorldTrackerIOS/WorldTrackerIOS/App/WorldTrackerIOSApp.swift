@@ -20,7 +20,19 @@ struct WorldTrackerIOSApp: App {
         FirebaseApp.configure()
 
         do {
-            container = try ModelContainer(for: VisitEntity.self)
+            // Create model configuration with migration options
+            let schema = Schema([VisitEntity.self])
+            let modelConfiguration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                allowsSave: true,
+                cloudKitDatabase: .none
+            )
+            
+            container = try ModelContainer(
+                for: schema,
+                configurations: [modelConfiguration]
+            )
             let context = ModelContext(container)
             
             let localRepo = SwiftDataVisitRepository(context: context)
@@ -37,6 +49,11 @@ struct WorldTrackerIOSApp: App {
                 )
             )
         } catch {
+            // Print detailed error information
+            print("❌ SwiftData container creation failed: \(error)")
+            if let swiftDataError = error as? SwiftData.SwiftDataError {
+                print("❌ SwiftData error details: \(swiftDataError)")
+            }
             fatalError("Failed to create SwiftData container: \(error)")
         }
     }
