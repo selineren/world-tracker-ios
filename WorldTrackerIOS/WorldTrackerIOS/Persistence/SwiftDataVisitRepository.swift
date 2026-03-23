@@ -84,7 +84,14 @@ final class SwiftDataVisitRepository: VisitRepository {
     func upsert(_ visit: Visit) throws {
         let entity = try fetchOrCreateEntity(countryId: visit.countryId)
         entity.isVisited = visit.isVisited
-        entity.visitedDate = visit.visitedDate
+        
+        // Enforce invariant: visited countries must have a date
+        if visit.isVisited {
+            entity.visitedDate = visit.visitedDate ?? entity.visitedDate ?? visit.updatedAt
+        } else {
+            entity.visitedDate = nil
+        }
+        
         entity.notes = visit.notes
         entity.updatedAt = visit.updatedAt
         try context.save()
