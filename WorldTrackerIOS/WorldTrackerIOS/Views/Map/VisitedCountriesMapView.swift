@@ -10,9 +10,10 @@ import MapKit
 
 struct VisitedCountriesMapView: UIViewRepresentable {
     let visitedCountryIDs: Set<String>
+    var onCountryTapped: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(visitedCountryIDs: visitedCountryIDs)
+        Coordinator(visitedCountryIDs: visitedCountryIDs, onCountryTapped: onCountryTapped)
     }
 
     func makeUIView(context: Context) -> MKMapView {
@@ -21,6 +22,10 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         
         // Ensure proper rendering
         mapView.isOpaque = true
+        
+        // Enable tap gesture
+        let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleMapTap(_:)))
+        mapView.addGestureRecognizer(tapGesture)
 
         if #available(iOS 16.0, *) {
             let config = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
@@ -59,6 +64,9 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         // Update the coordinator's visited countries set
         context.coordinator.visitedCountryIDs = visitedCountryIDs
         
+        // Update the callback
+        context.coordinator.onCountryTapped = onCountryTapped
+        
         // Only update if we have overlays loaded
         guard !mapView.overlays.isEmpty, 
               !context.coordinator.overlaysByCountry.isEmpty else { 
@@ -79,13 +87,55 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             }
         }
         var overlaysByCountry: [String: [MKOverlay]] = [:]
+        var onCountryTapped: ((String) -> Void)?
         
         // Cache overlay -> countryID lookups for performance
         private var overlayCountryCache: [ObjectIdentifier: String] = [:]
         private var needsRendererUpdate = false
 
-        init(visitedCountryIDs: Set<String>) {
+        init(visitedCountryIDs: Set<String>, onCountryTapped: ((String) -> Void)?) {
             self.visitedCountryIDs = visitedCountryIDs
+            self.onCountryTapped = onCountryTapped
+        }
+        
+        @objc func handleMapTap(_ gesture: UITapGestureRecognizer) {
+            guard let mapView = gesture.view as? MKMapView else { return }
+            
+            let point = gesture.location(in: mapView)
+            let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
+            
+            // Find which overlay was tapped
+            for (countryID, overlays) in overlaysByCountry {
+                for overlay in overlays {
+                    if overlayContains(overlay, coordinate: coordinate) {
+                        onCountryTapped?(countryID)
+                        return
+                    }
+                }
+            }
+        }
+        
+        private func overlayContains(_ overlay: MKOverlay, coordinate: CLLocationCoordinate2D) -> Bool {
+            if let polygon = overlay as? MKPolygon {
+                return polygonContains(polygon, coordinate: coordinate)
+            }
+            
+            if let multiPolygon = overlay as? MKMultiPolygon {
+                for polygon in multiPolygon.polygons {
+                    if polygonContains(polygon, coordinate: coordinate) {
+                        return true
+                    }
+                }
+            }
+            
+            return false
+        }
+        
+        private func polygonContains(_ polygon: MKPolygon, coordinate: CLLocationCoordinate2D) -> Bool {
+            let renderer = MKPolygonRenderer(polygon: polygon)
+            let mapPoint = MKMapPoint(coordinate)
+            let polygonPoint = renderer.point(for: mapPoint)
+            return renderer.path.contains(polygonPoint)
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
