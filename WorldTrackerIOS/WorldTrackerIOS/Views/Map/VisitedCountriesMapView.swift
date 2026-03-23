@@ -10,10 +10,11 @@ import MapKit
 
 struct VisitedCountriesMapView: UIViewRepresentable {
     let visitedCountryIDs: Set<String>
+    @Binding var zoomLevel: MapZoomLevel
     var onCountryTapped: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(visitedCountryIDs: visitedCountryIDs, onCountryTapped: onCountryTapped)
+        Coordinator(visitedCountryIDs: visitedCountryIDs, zoomLevel: zoomLevel, onCountryTapped: onCountryTapped)
     }
 
     func makeUIView(context: Context) -> MKMapView {
@@ -67,6 +68,26 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         // Update the callback
         context.coordinator.onCountryTapped = onCountryTapped
         
+        // Handle zoom level changes
+        if context.coordinator.currentZoomLevel != zoomLevel {
+            context.coordinator.currentZoomLevel = zoomLevel
+            
+            // Get current center
+            let currentCenter = mapView.region.center
+            
+            // Create new region with updated zoom
+            let newRegion = MKCoordinateRegion(
+                center: currentCenter,
+                span: MKCoordinateSpan(
+                    latitudeDelta: zoomLevel.latitudeDelta,
+                    longitudeDelta: zoomLevel.longitudeDelta
+                )
+            )
+            
+            // Animate to new zoom level
+            mapView.setRegion(newRegion, animated: true)
+        }
+        
         // Only update if we have overlays loaded
         guard !mapView.overlays.isEmpty, 
               !context.coordinator.overlaysByCountry.isEmpty else { 
@@ -88,13 +109,15 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         }
         var overlaysByCountry: [String: [MKOverlay]] = [:]
         var onCountryTapped: ((String) -> Void)?
+        var currentZoomLevel: MapZoomLevel
         
         // Cache overlay -> countryID lookups for performance
         private var overlayCountryCache: [ObjectIdentifier: String] = [:]
         private var needsRendererUpdate = false
 
-        init(visitedCountryIDs: Set<String>, onCountryTapped: ((String) -> Void)?) {
+        init(visitedCountryIDs: Set<String>, zoomLevel: MapZoomLevel, onCountryTapped: ((String) -> Void)?) {
             self.visitedCountryIDs = visitedCountryIDs
+            self.currentZoomLevel = zoomLevel
             self.onCountryTapped = onCountryTapped
         }
         
