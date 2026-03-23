@@ -17,12 +17,14 @@ struct MapScreen: View {
     @State private var selectedCountryID: String?
     @State private var showCountrySheet = false
     @State private var selectedCountryForDetail: Country?
+    @State private var mapZoomLevel: MapZoomLevel = .world
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topLeading) {
                 VisitedCountriesMapView(
                     visitedCountryIDs: appState.visitedCountryIDs,
+                    zoomLevel: $mapZoomLevel,
                     onCountryTapped: { countryID in
                         selectedCountryID = countryID
                         showCountrySheet = true
@@ -30,7 +32,7 @@ struct MapScreen: View {
                 )
                 .edgesIgnoringSafeArea(.top)
                 
-                // Overlay UI Elements
+                // Overlay UI Elements - Left side
                 VStack(alignment: .leading, spacing: 12) {
                     // Stats Card (top left)
                     if showingStats {
@@ -44,6 +46,20 @@ struct MapScreen: View {
                     legendCard
                 }
                 .padding()
+                
+                // Zoom Controls (right side)
+                VStack {
+                    Spacer()
+                    
+                    HStack {
+                        Spacer()
+                        
+                        zoomControls
+                            .padding(.trailing, 16)
+                            .padding(.bottom, 20)
+                    }
+                }
+                .padding(.top, 100) // Avoid overlap with navigation bar
                 
                 // Sync status indicator (top center)
                 if showSyncStatus {
@@ -141,6 +157,101 @@ struct MapScreen: View {
     
     @State private var showingStats = true
     
+    // MARK: - Zoom Controls
+    
+    private var zoomControls: some View {
+        VStack(spacing: 1) {
+            // Zoom In Button
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    zoomIn()
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial)
+                    .contentShape(Rectangle())
+            }
+            .disabled(!canZoomIn)
+            .opacity(canZoomIn ? 1 : 0.5)
+            
+            Divider()
+                .frame(width: 44)
+            
+            // Zoom Out Button
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    zoomOut()
+                }
+            } label: {
+                Image(systemName: "minus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial)
+                    .contentShape(Rectangle())
+            }
+            .disabled(!canZoomOut)
+            .opacity(canZoomOut ? 1 : 0.5)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+    }
+    
+    private var canZoomIn: Bool {
+        mapZoomLevel != .max
+    }
+    
+    private var canZoomOut: Bool {
+        mapZoomLevel != .world
+    }
+    
+    private func zoomIn() {
+        // Haptic feedback - prepare and trigger for best reliability
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare() // Pre-warm the haptic engine
+        generator.impactOccurred()
+        
+        print("🔍 Zoom In - Current: \(mapZoomLevel)")
+        
+        switch mapZoomLevel {
+        case .world:
+            mapZoomLevel = .continent
+        case .continent:
+            mapZoomLevel = .country
+        case .country:
+            mapZoomLevel = .city
+        case .city:
+            mapZoomLevel = .max
+        case .max:
+            break
+        }
+    }
+    
+    private func zoomOut() {
+        // Haptic feedback - prepare and trigger for best reliability
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare() // Pre-warm the haptic engine
+        generator.impactOccurred()
+        
+        print("🔍 Zoom Out - Current: \(mapZoomLevel)")
+        
+        switch mapZoomLevel {
+        case .max:
+            mapZoomLevel = .city
+        case .city:
+            mapZoomLevel = .country
+        case .country:
+            mapZoomLevel = .continent
+        case .continent:
+            mapZoomLevel = .world
+        case .world:
+            break
+        }
+    }
+    
     // MARK: - Stats Card
     
     private var statsCard: some View {
@@ -236,6 +347,35 @@ struct MapScreen: View {
         
         appState.refreshFromPersistence()
         await appState.syncWithCloud()
+    }
+}
+
+// MARK: - Map Zoom Level
+
+enum MapZoomLevel: Equatable {
+    case world      // Global view (120° span)
+    case continent  // Continental view (60° span)
+    case country    // Country view (20° span)
+    case city       // City view (5° span)
+    case max        // Maximum zoom (1° span)
+    
+    var latitudeDelta: CLLocationDegrees {
+        switch self {
+        case .world:
+            return 120
+        case .continent:
+            return 60
+        case .country:
+            return 20
+        case .city:
+            return 5
+        case .max:
+            return 1
+        }
+    }
+    
+    var longitudeDelta: CLLocationDegrees {
+        return latitudeDelta
     }
 }
 
