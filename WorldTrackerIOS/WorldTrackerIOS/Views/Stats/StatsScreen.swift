@@ -42,16 +42,28 @@ struct StatsScreen: View {
     }
     
     private var visitedThisYear: [(country: Country, date: Date)] {
-        let currentYear = Calendar.current.component(.year, from: Date())
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: Date())
         let byId = Dictionary(uniqueKeysWithValues: vm.countries.map { ($0.id, $0) })
         
         return visitedVisits
             .compactMap { visit -> (country: Country, date: Date)? in
-                guard let date = visit.visitedDate,
-                      let country = byId[visit.countryId],
-                      Calendar.current.component(.year, from: date) == currentYear else {
+                // Get country first
+                guard let country = byId[visit.countryId] else {
                     return nil
                 }
+                
+                // For visited countries, use visitedDate (should always exist for visited)
+                // If somehow missing, fall back to updatedAt to avoid losing the data
+                guard let date = visit.visitedDate ?? (visit.isVisited ? visit.updatedAt : nil) else {
+                    return nil
+                }
+                
+                // Check if the date is in the current year
+                guard calendar.component(.year, from: date) == currentYear else {
+                    return nil
+                }
+                
                 return (country: country, date: date)
             }
             .sorted { $0.date > $1.date }
@@ -181,6 +193,27 @@ struct StatsScreen: View {
                                             .foregroundStyle(.secondary)
                                     }
                                     .padding(.vertical, 2)
+                                }
+                            }
+                            
+                            // Show "View All" button if there are more than 5
+                            if visitedThisYear.count > 5 {
+                                NavigationLink {
+                                    VisitedThisYearListView(visits: visitedThisYear)
+                                } label: {
+                                    HStack {
+                                        Text("View All \(visitedThisYear.count) Countries")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .foregroundStyle(.blue)
+                                    .padding(.vertical, 8)
                                 }
                             }
                         } header: {
@@ -404,3 +437,45 @@ struct StatsScreen: View {
         }
     }
 }
+// MARK: - Visited This Year List View
+
+struct VisitedThisYearListView: View {
+    let visits: [(country: Country, date: Date)]
+    
+    var body: some View {
+        List {
+            ForEach(visits, id: \.country.id) { item in
+                NavigationLink {
+                    CountryDetailScreen(country: item.country)
+                } label: {
+                    HStack(spacing: 12) {
+                        Text(item.country.flagEmoji)
+                            .font(.title2)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.country.name)
+                                .font(.body)
+                            Text(item.country.continent.displayName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Text(formattedDate(item.date))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .navigationTitle("Visited This Year")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private func formattedDate(_ date: Date) -> String {
+        date.formatted(date: .abbreviated, time: .omitted)
+    }
+}
+

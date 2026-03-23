@@ -125,11 +125,19 @@ final class FirestoreVisitRepository {
         } else {
             throw FirestoreVisitRepositoryError.invalidData
         }
+        
+        // Ensure visited countries have a date - if missing, use updatedAt as best guess
+        let finalVisitedDate: Date?
+        if isVisited {
+            finalVisitedDate = visitedDate ?? updatedAt
+        } else {
+            finalVisitedDate = nil
+        }
 
         return Visit(
             countryId: countryId,
             isVisited: isVisited,
-            visitedDate: visitedDate,
+            visitedDate: finalVisitedDate,
             notes: notes,
             updatedAt: updatedAt
         )
