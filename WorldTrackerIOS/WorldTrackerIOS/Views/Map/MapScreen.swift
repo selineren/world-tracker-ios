@@ -14,12 +14,19 @@ struct MapScreen: View {
     @EnvironmentObject private var authService: AuthService
     
     @State private var showSyncStatus = true
+    @State private var selectedCountryID: String?
+    @State private var showCountrySheet = false
+    @State private var selectedCountryForDetail: Country?
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topLeading) {
                 VisitedCountriesMapView(
-                    visitedCountryIDs: appState.visitedCountryIDs
+                    visitedCountryIDs: appState.visitedCountryIDs,
+                    onCountryTapped: { countryID in
+                        selectedCountryID = countryID
+                        showCountrySheet = true
+                    }
                 )
                 .edgesIgnoringSafeArea(.top)
                 
@@ -111,6 +118,23 @@ struct MapScreen: View {
                 Task {
                     await refreshMapData()
                 }
+            }
+            .sheet(isPresented: $showCountrySheet) {
+                if let countryID = selectedCountryID {
+                    CountryQuickActionSheet(
+                        countryID: countryID,
+                        appState: appState,
+                        onViewDetails: { country in
+                            selectedCountryForDetail = country
+                            showCountrySheet = false
+                        }
+                    )
+                    .presentationDetents([.height(280), .medium])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .navigationDestination(item: $selectedCountryForDetail) { country in
+                CountryDetailScreen(country: country)
             }
         }
     }
@@ -215,4 +239,140 @@ struct MapScreen: View {
     }
 }
 
+// MARK: - Country Quick Action Sheet
+
+struct CountryQuickActionSheet: View {
+    let countryID: String
+    @ObservedObject var appState: AppState
+    let onViewDetails: (Country) -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var country: Country?
+    @State private var isLoading = true
+    
+    private var isVisited: Bool {
+        appState.isVisited(countryID)
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            if isLoading {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Loading...")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 40)
+            } else if let country = country {
+                VStack(spacing: 12) {
+                    Text(country.flagEmoji)
+                        .font(.system(size: 64))
+                    
+                    Text(country.name)
+                        .font(.title2.bold())
+                    
+                    Text(country.continent.displayName)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 24)
+                .padding(.bottom, 20)
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.largeTitle)
+                        .foregroundStyle(.orange)
+                    Text("Country not found")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 40)
+            }
+            
+            Divider()
+            
+            // Actions
+            VStack(spacing: 0) {
+                Button {
+                    toggleVisited()
+                } label: {
+                    HStack {
+                        Image(systemName: isVisited ? "checkmark.circle.fill" : "checkmark.circle")
+                            .font(.title3)
+                            .foregroundStyle(isVisited ? .green : .gray)
+                        
+                        Text(isVisited ? "Mark as Not Visited" : "Mark as Visited")
+                            .font(.headline)
+                        
+                        Spacer()
+                    }
+                    .padding()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(country == nil)
+                
+                Divider()
+                    .padding(.leading)
+                
+                Button {
+                    if let country = country {
+                        onViewDetails(country)
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .font(.title3)
+                            .foregroundStyle(.blue)
+                        
+                        Text("View Details")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(country == nil)
+            }
+            
+            Spacer()
+        }
+        .task {
+            await loadCountry()
+        }
+    }
+    
+    private func loadCountry() async {
+        // Load countries on background thread
+        let countries = await Task.detached(priority: .userInitiated) {
+            CountryDataService.shared.loadCountries()
+        }.value
+        
+        // Find matching country
+        country = countries.first { $0.id == countryID }
+        isLoading = false
+    }
+    
+    private func toggleVisited() {
+        let newState = !isVisited
+        appState.setVisited(countryID, isVisited: newState)
+        
+        // Provide haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        // Dismiss after a short delay to show the state change
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            dismiss()
+        }
+    }
+}
 

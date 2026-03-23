@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Visit {
+struct Visit: Equatable {
     let countryId: String
     var isVisited: Bool
     var visitedDate: Date?
