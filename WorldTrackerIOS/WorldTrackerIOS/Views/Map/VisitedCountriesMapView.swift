@@ -8,6 +8,36 @@
 import SwiftUI
 import MapKit
 
+// MARK: - Helper Extensions
+
+extension MKCoordinateRegion {
+    func intersects(_ mapRect: MKMapRect) -> Bool {
+        let regionRect = MKCoordinateRegion.mapRect(for: self)
+        return regionRect.intersects(mapRect)
+    }
+    
+    static func mapRect(for region: MKCoordinateRegion) -> MKMapRect {
+        let topLeft = CLLocationCoordinate2D(
+            latitude: region.center.latitude + (region.span.latitudeDelta / 2),
+            longitude: region.center.longitude - (region.span.longitudeDelta / 2)
+        )
+        let bottomRight = CLLocationCoordinate2D(
+            latitude: region.center.latitude - (region.span.latitudeDelta / 2),
+            longitude: region.center.longitude + (region.span.longitudeDelta / 2)
+        )
+        
+        let topLeftPoint = MKMapPoint(topLeft)
+        let bottomRightPoint = MKMapPoint(bottomRight)
+        
+        return MKMapRect(
+            x: min(topLeftPoint.x, bottomRightPoint.x),
+            y: min(topLeftPoint.y, bottomRightPoint.y),
+            width: abs(topLeftPoint.x - bottomRightPoint.x),
+            height: abs(topLeftPoint.y - bottomRightPoint.y)
+        )
+    }
+}
+
 struct VisitedCountriesMapView: UIViewRepresentable {
     let visitedCountryIDs: Set<String>
     @Binding var zoomLevel: MapZoomLevel
@@ -53,8 +83,10 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             DispatchQueue.main.async { [weak coordinator] in
                 guard let coordinator = coordinator else { return }
                 coordinator.overlaysByCountry = overlaysByCountry
+                // Add ALL overlays initially (needed for tap detection)
                 let allOverlays = overlaysByCountry.values.flatMap { $0 }
                 mapView.addOverlays(allOverlays)
+                coordinator.allOverlaysLoaded = true
             }
         }
 
@@ -62,6 +94,9 @@ struct VisitedCountriesMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        // Cache old value to detect actual changes
+        let oldVisitedIDs = context.coordinator.visitedCountryIDs
+        
         // Update the coordinator's visited countries set
         context.coordinator.visitedCountryIDs = visitedCountryIDs
         
@@ -88,37 +123,37 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             mapView.setRegion(newRegion, animated: true)
         }
         
-        // Only update if we have overlays loaded
-        guard !mapView.overlays.isEmpty, 
-              !context.coordinator.overlaysByCountry.isEmpty else { 
-            return 
+        // OPTIMIZATION: Only update renderer colors if visited countries changed
+        // Don't add/remove overlays - they're all on the map already
+        if oldVisitedIDs != visitedCountryIDs, context.coordinator.allOverlaysLoaded {
+            context.coordinator.updateRendererColors(for: mapView)
         }
-        
-        // Update renderers only if needed (throttled by coordinator)
-        context.coordinator.updateRenderersIfNeeded(for: mapView)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
-        var visitedCountryIDs: Set<String> {
-            didSet {
-                // Track if visited countries actually changed
-                if oldValue != visitedCountryIDs {
-                    needsRendererUpdate = true
-                }
-            }
-        }
+        var visitedCountryIDs: Set<String>
         var overlaysByCountry: [String: [MKOverlay]] = [:]
         var onCountryTapped: ((String) -> Void)?
         var currentZoomLevel: MapZoomLevel
+        var allOverlaysLoaded = false
         
         // Cache overlay -> countryID lookups for performance
         private var overlayCountryCache: [ObjectIdentifier: String] = [:]
-        private var needsRendererUpdate = false
 
         init(visitedCountryIDs: Set<String>, zoomLevel: MapZoomLevel, onCountryTapped: ((String) -> Void)?) {
             self.visitedCountryIDs = visitedCountryIDs
             self.currentZoomLevel = zoomLevel
             self.onCountryTapped = onCountryTapped
+        }
+        
+        // OPTIMIZATION: Update renderer colors without adding/removing overlays
+        func updateRendererColors(for mapView: MKMapView) {
+            for overlay in mapView.overlays {
+                if let renderer = mapView.renderer(for: overlay) as? MKOverlayPathRenderer {
+                    configure(renderer: renderer, for: overlay)
+                    renderer.setNeedsDisplay()
+                }
+            }
         }
         
         @objc func handleMapTap(_ gesture: UITapGestureRecognizer) {
@@ -127,12 +162,29 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             let point = gesture.location(in: mapView)
             let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
             
-            // Find which overlay was tapped
+            // FIX: If overlays haven't loaded yet, ensure they're loaded synchronously
+            if overlaysByCountry.isEmpty {
+                overlaysByCountry = CountryBoundaryService.shared.getCountryOverlays()
+                let allOverlays = overlaysByCountry.values.flatMap { $0 }
+                mapView.addOverlays(allOverlays)
+                allOverlaysLoaded = true
+            }
+            
+            // OPTIMIZATION: Spatial filtering - only check countries near tap
+            let tapRegion = MKCoordinateRegion(
+                center: coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 5, longitudeDelta: 5)
+            )
+            
+            // Check all countries with spatial filtering
             for (countryID, overlays) in overlaysByCountry {
                 for overlay in overlays {
-                    if overlayContains(overlay, coordinate: coordinate) {
-                        onCountryTapped?(countryID)
-                        return
+                    // Quick bounds check before expensive polygon test
+                    if tapRegion.intersects(overlay.boundingMapRect) {
+                        if overlayContains(overlay, coordinate: coordinate) {
+                            onCountryTapped?(countryID)
+                            return
+                        }
                     }
                 }
             }
@@ -209,19 +261,6 @@ struct VisitedCountriesMapView: UIViewRepresentable {
                 }
             }
             return nil
-        }
-        
-        func updateRenderersIfNeeded(for mapView: MKMapView) {
-            guard needsRendererUpdate else { return }
-            needsRendererUpdate = false
-            
-            // Refresh renderers
-            for overlay in mapView.overlays {
-                if let renderer = mapView.renderer(for: overlay) as? MKOverlayPathRenderer {
-                    configure(renderer: renderer, for: overlay)
-                    renderer.setNeedsDisplay()
-                }
-            }
         }
     }
 }
