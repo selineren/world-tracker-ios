@@ -18,16 +18,23 @@ struct MapScreen: View {
     @State private var showCountrySheet = false
     @State private var selectedCountryForDetail: Country?
     @State private var mapZoomLevel: MapZoomLevel = .world
+    @State private var showingStats = true
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topLeading) {
-                VisitedCountriesMapView(
+                // OPTIMIZATION: Isolate map in separate view to prevent parent re-renders
+                MapContainerView(
                     visitedCountryIDs: appState.visitedCountryIDs,
                     zoomLevel: $mapZoomLevel,
                     onCountryTapped: { countryID in
+                        // Set selectedCountryID first, then trigger sheet presentation
                         selectedCountryID = countryID
-                        showCountrySheet = true
+                        
+                        // Delay sheet presentation slightly to ensure state is committed
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            showCountrySheet = true
+                        }
                     }
                 )
                 .edgesIgnoringSafeArea(.top)
@@ -154,8 +161,6 @@ struct MapScreen: View {
             }
         }
     }
-    
-    @State private var showingStats = true
     
     // MARK: - Zoom Controls
     
@@ -515,4 +520,21 @@ struct CountryQuickActionSheet: View {
         }
     }
 }
+
+// MARK: - Map Container (Optimization)
+/// Isolated map container to prevent unnecessary re-renders from parent view state changes
+struct MapContainerView: View {
+    let visitedCountryIDs: Set<String>
+    @Binding var zoomLevel: MapZoomLevel
+    let onCountryTapped: ((String) -> Void)?
+    
+    var body: some View {
+        VisitedCountriesMapView(
+            visitedCountryIDs: visitedCountryIDs,
+            zoomLevel: $zoomLevel,
+            onCountryTapped: onCountryTapped
+        )
+    }
+}
+
 
