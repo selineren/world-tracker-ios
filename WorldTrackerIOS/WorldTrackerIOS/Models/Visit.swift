@@ -12,5 +12,20 @@ struct Visit: Equatable {
     var isVisited: Bool
     var visitedDate: Date?
     var notes: String
+    var photos: [VisitPhoto]
     var updatedAt: Date
 }
+struct VisitPhoto: Equatable, Codable, Identifiable {
+    let id: UUID
+    var imageData: Data
+    var caption: String
+    var createdAt: Date
+    
+    init(id: UUID = UUID(), imageData: Data, caption: String = "", createdAt: Date = Date()) {
+        self.id = id
+        self.imageData = imageData
+        self.caption = caption
+        self.createdAt = createdAt
+    }
+}
+

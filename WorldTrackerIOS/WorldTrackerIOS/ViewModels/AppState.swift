@@ -161,7 +161,7 @@ final class AppState: ObservableObject {
     }
     
     func visit(for countryId: String) -> Visit {
-        visits[countryId] ?? Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "", updatedAt: Date())
+        visits[countryId] ?? Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "", photos: [], updatedAt: Date())
     }
 
     func isVisited(_ countryId: String) -> Bool {
@@ -211,6 +211,56 @@ final class AppState: ObservableObject {
             }
         } catch {
             print("⚠️ Failed to persist updateNotes: \(error)")
+        }
+    }
+    
+    func addPhoto(_ countryId: String, photo: VisitPhoto) {
+        var v = visit(for: countryId)
+        v.photos.append(photo)
+        v.updatedAt = Date()
+        visits[countryId] = v
+        
+        do {
+            try repository.addPhoto(countryId, photo: photo)
+            Task {
+                await syncWithCloud(showStatus: false)
+            }
+        } catch {
+            print("⚠️ Failed to persist addPhoto: \(error)")
+        }
+    }
+    
+    func removePhoto(_ countryId: String, photoId: UUID) {
+        var v = visit(for: countryId)
+        v.photos.removeAll { $0.id == photoId }
+        v.updatedAt = Date()
+        visits[countryId] = v
+        
+        do {
+            try repository.removePhoto(countryId, photoId: photoId)
+            Task {
+                await syncWithCloud(showStatus: false)
+            }
+        } catch {
+            print("⚠️ Failed to persist removePhoto: \(error)")
+        }
+    }
+    
+    func updatePhotoCaption(_ countryId: String, photoId: UUID, caption: String) {
+        var v = visit(for: countryId)
+        if let index = v.photos.firstIndex(where: { $0.id == photoId }) {
+            v.photos[index].caption = caption
+            v.updatedAt = Date()
+            visits[countryId] = v
+            
+            do {
+                try repository.updatePhotoCaption(countryId, photoId: photoId, caption: caption)
+                Task {
+                    await syncWithCloud(showStatus: false)
+                }
+            } catch {
+                print("⚠️ Failed to persist updatePhotoCaption: \(error)")
+            }
         }
     }
 

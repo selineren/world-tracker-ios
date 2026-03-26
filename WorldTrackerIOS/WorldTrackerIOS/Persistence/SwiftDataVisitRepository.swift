@@ -18,17 +18,21 @@ final class SwiftDataVisitRepository: VisitRepository {
 
     func visit(for countryId: String) throws -> Visit {
         if let entity = try fetchEntity(countryId: countryId) {
+            let photos = decodePhotos(from: entity.photosData)
+            print("📸 Loading visit for \(countryId) - photos count: \(photos.count)")
             return Visit(
                 countryId: entity.countryId,
                 isVisited: entity.isVisited,
                 visitedDate: entity.visitedDate,
                 notes: entity.notes,
+                photos: photos,
                 updatedAt: entity.updatedAt
             )
         }
 
-        // default “not visited”
-        return Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "", updatedAt: Date())
+        // default "not visited"
+        print("📸 Creating new visit for \(countryId) - no existing entity")
+        return Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "", photos: [], updatedAt: Date())
     }
     
     func allVisits() throws -> [Visit] {
@@ -40,6 +44,7 @@ final class SwiftDataVisitRepository: VisitRepository {
                 isVisited: $0.isVisited,
                 visitedDate: $0.visitedDate,
                 notes: $0.notes,
+                photos: decodePhotos(from: $0.photosData),
                 updatedAt: $0.updatedAt
             )
         }
@@ -81,6 +86,42 @@ final class SwiftDataVisitRepository: VisitRepository {
         try context.save()
     }
     
+    func addPhoto(_ countryId: String, photo: VisitPhoto) throws {
+        let entity = try fetchOrCreateEntity(countryId: countryId)
+        var photos = decodePhotos(from: entity.photosData)
+        print("📸 Before adding photo - Country: \(countryId), existing photos: \(photos.count)")
+        photos.append(photo)
+        entity.photosData = encodePhotos(photos)
+        entity.updatedAt = Date()
+        try context.save()
+        print("📸 After saving photo - Country: \(countryId), total photos: \(photos.count)")
+        
+        // Verify save
+        let verifyEntity = try fetchEntity(countryId: countryId)
+        let verifyPhotos = decodePhotos(from: verifyEntity?.photosData)
+        print("📸 Verification - Country: \(countryId), photos in DB: \(verifyPhotos.count)")
+    }
+    
+    func removePhoto(_ countryId: String, photoId: UUID) throws {
+        let entity = try fetchOrCreateEntity(countryId: countryId)
+        var photos = decodePhotos(from: entity.photosData)
+        photos.removeAll { $0.id == photoId }
+        entity.photosData = encodePhotos(photos)
+        entity.updatedAt = Date()
+        try context.save()
+    }
+    
+    func updatePhotoCaption(_ countryId: String, photoId: UUID, caption: String) throws {
+        let entity = try fetchOrCreateEntity(countryId: countryId)
+        var photos = decodePhotos(from: entity.photosData)
+        if let index = photos.firstIndex(where: { $0.id == photoId }) {
+            photos[index].caption = caption
+            entity.photosData = encodePhotos(photos)
+            entity.updatedAt = Date()
+            try context.save()
+        }
+    }
+    
     func upsert(_ visit: Visit) throws {
         let entity = try fetchOrCreateEntity(countryId: visit.countryId)
         entity.isVisited = visit.isVisited
@@ -93,6 +134,7 @@ final class SwiftDataVisitRepository: VisitRepository {
         }
         
         entity.notes = visit.notes
+        entity.photosData = encodePhotos(visit.photos)
         entity.updatedAt = visit.updatedAt
         try context.save()
     }
@@ -120,5 +162,16 @@ final class SwiftDataVisitRepository: VisitRepository {
         let created = VisitEntity(countryId: countryId)
         context.insert(created)
         return created
+    }
+    
+    // MARK: - Photo encoding/decoding
+    
+    private func decodePhotos(from data: Data?) -> [VisitPhoto] {
+        guard let data = data else { return [] }
+        return (try? JSONDecoder().decode([VisitPhoto].self, from: data)) ?? []
+    }
+    
+    private func encodePhotos(_ photos: [VisitPhoto]) -> Data? {
+        try? JSONEncoder().encode(photos)
     }
 }

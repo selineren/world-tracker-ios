@@ -175,16 +175,47 @@ final class SyncService {
     }
 
     private func pushToCloud(_ visit: Visit) async throws {
+        // Use setVisited for the main data
         try await cloudRepository.setVisited(
             visit.countryId,
             isVisited: visit.isVisited,
             visitedDate: visit.visitedDate,
             notes: visit.notes
         )
+        
+        // Sync photos separately - don't fail the entire sync if photos fail
+        let cloudVisit = try? await cloudRepository.visit(for: visit.countryId)
+        let cloudPhotos = cloudVisit?.photos ?? []
+        
+        // Add any new photos that aren't in the cloud
+        for photo in visit.photos {
+            if !cloudPhotos.contains(where: { $0.id == photo.id }) {
+                try? await cloudRepository.addPhoto(visit.countryId, photo: photo)
+            }
+        }
+        
+        // Remove photos that were deleted locally
+        for cloudPhoto in cloudPhotos {
+            if !visit.photos.contains(where: { $0.id == cloudPhoto.id }) {
+                try? await cloudRepository.removePhoto(visit.countryId, photoId: cloudPhoto.id)
+            }
+        }
     }
 
     private func saveToLocal(_ visit: Visit) throws {
-        try localRepository.upsert(visit)
+        let existingVisit = try? localRepository.visit(for: visit.countryId)
+        
+        if let existingVisit = existingVisit {
+            // Entity exists - preserve local photos if cloud has none, otherwise use cloud photos
+            var mergedVisit = visit
+            if visit.photos.isEmpty && !existingVisit.photos.isEmpty {
+                mergedVisit.photos = existingVisit.photos
+            }
+            try localRepository.upsert(mergedVisit)
+        } else {
+            // New visit - just save it (including cloud photos if any)
+            try localRepository.upsert(visit)
+        }
     }
 }
 

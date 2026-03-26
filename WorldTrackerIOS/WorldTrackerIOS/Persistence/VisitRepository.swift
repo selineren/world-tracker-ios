@@ -12,6 +12,9 @@ protocol VisitRepository {
     func allVisits() throws -> [Visit]
     func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date?) throws
     func updateNotes(_ countryId: String, notes: String) throws
+    func addPhoto(_ countryId: String, photo: VisitPhoto) throws
+    func removePhoto(_ countryId: String, photoId: UUID) throws
+    func updatePhotoCaption(_ countryId: String, photoId: UUID, caption: String) throws
     func upsert(_ visit: Visit) throws
     func visitedCount() throws -> Int
 }
