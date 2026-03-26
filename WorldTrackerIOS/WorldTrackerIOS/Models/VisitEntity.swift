@@ -14,13 +14,15 @@ final class VisitEntity {
     var isVisited: Bool
     var visitedDate: Date?
     var notes: String
+    var photosData: Data? // JSON-encoded array of VisitPhoto
     var updatedAt: Date
 
-    init(countryId: String, isVisited: Bool = false, visitedDate: Date? = nil, notes: String = "", updatedAt: Date = Date ()) {
+    init(countryId: String, isVisited: Bool = false, visitedDate: Date? = nil, notes: String = "", photosData: Data? = nil, updatedAt: Date = Date ()) {
         self.countryId = countryId
         self.isVisited = isVisited
         self.visitedDate = visitedDate
         self.notes = notes
+        self.photosData = photosData
         self.updatedAt = updatedAt
     }
 }

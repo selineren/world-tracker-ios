@@ -14,8 +14,7 @@ struct MapScreen: View {
     @EnvironmentObject private var authService: AuthService
     
     @State private var showSyncStatus = true
-    @State private var selectedCountryID: String?
-    @State private var showCountrySheet = false
+    @State private var selectedCountryForSheet: SelectedCountry?
     @State private var selectedCountryForDetail: Country?
     @State private var mapZoomLevel: MapZoomLevel = .world
     @State private var showingStats = true
@@ -28,13 +27,7 @@ struct MapScreen: View {
                     visitedCountryIDs: appState.visitedCountryIDs,
                     zoomLevel: $mapZoomLevel,
                     onCountryTapped: { countryID in
-                        // Set selectedCountryID first, then trigger sheet presentation
-                        selectedCountryID = countryID
-                        
-                        // Delay sheet presentation slightly to ensure state is committed
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            showCountrySheet = true
-                        }
+                        selectedCountryForSheet = SelectedCountry(id: countryID)
                     }
                 )
                 .edgesIgnoringSafeArea(.top)
@@ -142,19 +135,17 @@ struct MapScreen: View {
                     await refreshMapData()
                 }
             }
-            .sheet(isPresented: $showCountrySheet) {
-                if let countryID = selectedCountryID {
-                    CountryQuickActionSheet(
-                        countryID: countryID,
-                        appState: appState,
-                        onViewDetails: { country in
-                            selectedCountryForDetail = country
-                            showCountrySheet = false
-                        }
-                    )
-                    .presentationDetents([.height(280), .medium])
-                    .presentationDragIndicator(.visible)
-                }
+            .sheet(item: $selectedCountryForSheet) { selectedCountry in
+                CountryQuickActionSheet(
+                    countryID: selectedCountry.id,
+                    appState: appState,
+                    onViewDetails: { country in
+                        selectedCountryForDetail = country
+                        selectedCountryForSheet = nil
+                    }
+                )
+                .presentationDetents([.height(280), .medium])
+                .presentationDragIndicator(.visible)
             }
             .navigationDestination(item: $selectedCountryForDetail) { country in
                 CountryDetailScreen(country: country)
@@ -214,12 +205,9 @@ struct MapScreen: View {
     }
     
     private func zoomIn() {
-        // Haptic feedback - prepare and trigger for best reliability
         let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.prepare() // Pre-warm the haptic engine
+        generator.prepare()
         generator.impactOccurred()
-        
-        print("🔍 Zoom In - Current: \(mapZoomLevel)")
         
         switch mapZoomLevel {
         case .world:
@@ -236,12 +224,9 @@ struct MapScreen: View {
     }
     
     private func zoomOut() {
-        // Haptic feedback - prepare and trigger for best reliability
         let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.prepare() // Pre-warm the haptic engine
+        generator.prepare()
         generator.impactOccurred()
-        
-        print("🔍 Zoom Out - Current: \(mapZoomLevel)")
         
         switch mapZoomLevel {
         case .max:
@@ -356,6 +341,10 @@ struct MapScreen: View {
 }
 
 // MARK: - Map Zoom Level
+
+struct SelectedCountry: Identifiable {
+    let id: String
+}
 
 enum MapZoomLevel: Equatable {
     case world      // Global view (120° span)
@@ -496,10 +485,8 @@ struct CountryQuickActionSheet: View {
     }
     
     private func loadCountry() async {
-        // Load countries on background thread
-        let countries = await Task.detached(priority: .userInitiated) {
-            CountryDataService.shared.loadCountries()
-        }.value
+        // Load countries (happens on main actor)
+        let countries = CountryDataService.shared.loadCountries()
         
         // Find matching country
         country = countries.first { $0.id == countryID }
