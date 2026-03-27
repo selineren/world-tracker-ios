@@ -376,6 +376,43 @@ final class CountryDataService {
     }
     
     private func calculateCentroid(from geometries: [MKGeoJSONObject]) -> Coordinate {
+        // Find the largest polygon to use for centroid calculation
+        // This avoids offshore territories skewing the result
+        var largestPolygon: MKPolygon?
+        var largestArea = 0.0
+        
+        for geometry in geometries {
+            if let polygon = geometry as? MKPolygon {
+                let area = polygon.boundingMapRect.width * polygon.boundingMapRect.height
+                if area > largestArea {
+                    largestArea = area
+                    largestPolygon = polygon
+                }
+            } else if let multiPolygon = geometry as? MKMultiPolygon {
+                for polygon in multiPolygon.polygons {
+                    let area = polygon.boundingMapRect.width * polygon.boundingMapRect.height
+                    if area > largestArea {
+                        largestArea = area
+                        largestPolygon = polygon
+                    }
+                }
+            }
+        }
+        
+        // Use the center of the bounding box of the largest polygon
+        // This gives a more visually accurate centroid than averaging all points
+        if let polygon = largestPolygon {
+            let boundingBox = polygon.boundingMapRect
+            let centerPoint = MKMapPoint(x: boundingBox.midX, y: boundingBox.midY)
+            let centerCoordinate = centerPoint.coordinate
+            
+            return Coordinate(
+                latitude: centerCoordinate.latitude,
+                longitude: centerCoordinate.longitude
+            )
+        }
+        
+        // Fallback to averaging all points if no polygon found
         var totalLat = 0.0
         var totalLon = 0.0
         var pointCount = 0
@@ -407,7 +444,7 @@ final class CountryDataService {
             )
         }
         
-        // Fallback
+        // Final fallback
         return Coordinate(latitude: 0, longitude: 0)
     }
     

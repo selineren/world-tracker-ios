@@ -42,14 +42,27 @@ struct VisitedCountriesMapView: UIViewRepresentable {
     let visitedCountryIDs: Set<String>
     @Binding var zoomLevel: MapZoomLevel
     var onCountryTapped: ((String) -> Void)?
+    var bitmojiAnnotations: [CountryBitmojiAnnotation] = []
+    var onBitmojiTapped: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(visitedCountryIDs: visitedCountryIDs, zoomLevel: zoomLevel, onCountryTapped: onCountryTapped)
+        Coordinator(
+            visitedCountryIDs: visitedCountryIDs,
+            zoomLevel: zoomLevel,
+            onCountryTapped: onCountryTapped,
+            onBitmojiTapped: onBitmojiTapped
+        )
     }
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView(frame: .zero)
         mapView.delegate = context.coordinator
+        
+        // Register annotation view class
+        mapView.register(
+            CountryBitmojiAnnotationView.self,
+            forAnnotationViewWithReuseIdentifier: CountryBitmojiAnnotationView.identifier
+        )
         
         // Ensure proper rendering
         mapView.isOpaque = true
@@ -70,7 +83,7 @@ struct VisitedCountriesMapView: UIViewRepresentable {
 
         let region = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 20, longitude: 0),
-            span: MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 120)
+            span: MKCoordinateSpan(latitudeDelta: 60, longitudeDelta: 60)
         )
         mapView.setRegion(region, animated: false)
 
@@ -100,8 +113,9 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         // Update the coordinator's visited countries set
         context.coordinator.visitedCountryIDs = visitedCountryIDs
         
-        // Update the callback
+        // Update the callbacks
         context.coordinator.onCountryTapped = onCountryTapped
+        context.coordinator.onBitmojiTapped = onBitmojiTapped
         
         // Handle zoom level changes
         if context.coordinator.currentZoomLevel != zoomLevel {
@@ -123,27 +137,41 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             mapView.setRegion(newRegion, animated: true)
         }
         
+        // Update annotations
+        updateAnnotations(in: mapView, coordinator: context.coordinator)
+        
         // OPTIMIZATION: Only update renderer colors if visited countries changed
         // Don't add/remove overlays - they're all on the map already
         if oldVisitedIDs != visitedCountryIDs, context.coordinator.allOverlaysLoaded {
             context.coordinator.updateRendererColors(for: mapView)
         }
     }
+    
+    private func updateAnnotations(in mapView: MKMapView, coordinator: Coordinator) {
+        // Remove old bitmoji annotations
+        let oldAnnotations = mapView.annotations.compactMap { $0 as? CountryBitmojiAnnotation }
+        mapView.removeAnnotations(oldAnnotations)
+        
+        // Add new bitmoji annotations
+        mapView.addAnnotations(bitmojiAnnotations)
+    }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var visitedCountryIDs: Set<String>
         var overlaysByCountry: [String: [MKOverlay]] = [:]
         var onCountryTapped: ((String) -> Void)?
+        var onBitmojiTapped: ((String) -> Void)?
         var currentZoomLevel: MapZoomLevel
         var allOverlaysLoaded = false
         
         // Cache overlay -> countryID lookups for performance
         private var overlayCountryCache: [ObjectIdentifier: String] = [:]
 
-        init(visitedCountryIDs: Set<String>, zoomLevel: MapZoomLevel, onCountryTapped: ((String) -> Void)?) {
+        init(visitedCountryIDs: Set<String>, zoomLevel: MapZoomLevel, onCountryTapped: ((String) -> Void)?, onBitmojiTapped: ((String) -> Void)?) {
             self.visitedCountryIDs = visitedCountryIDs
             self.currentZoomLevel = zoomLevel
             self.onCountryTapped = onCountryTapped
+            self.onBitmojiTapped = onBitmojiTapped
         }
         
         // OPTIMIZATION: Update renderer colors without adding/removing overlays
@@ -162,7 +190,21 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             let point = gesture.location(in: mapView)
             let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
             
-            // FIX: If overlays haven't loaded yet, ensure they're loaded synchronously
+            // Check if we tapped on an annotation first
+            // If so, don't process country tap
+            for annotation in mapView.annotations {
+                if let annotationView = mapView.view(for: annotation) {
+                    let annotationPoint = mapView.convert(annotation.coordinate, toPointTo: mapView)
+                    let distance = hypot(point.x - annotationPoint.x, point.y - annotationPoint.y)
+                    
+                    // If tap is within 32pt of annotation (matching the new smaller size), ignore country tap
+                    if distance < 32 {
+                        return
+                    }
+                }
+            }
+            
+            // Ensure overlays are loaded before processing tap
             if overlaysByCountry.isEmpty {
                 overlaysByCountry = CountryBoundaryService.shared.getCountryOverlays()
                 let allOverlays = overlaysByCountry.values.flatMap { $0 }
@@ -227,6 +269,31 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             }
 
             return MKOverlayRenderer(overlay: overlay)
+        }
+        
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard let bitmojiAnnotation = annotation as? CountryBitmojiAnnotation else {
+                return nil
+            }
+            
+            let view = mapView.dequeueReusableAnnotationView(
+                withIdentifier: CountryBitmojiAnnotationView.identifier,
+                for: annotation
+            ) as? CountryBitmojiAnnotationView ?? CountryBitmojiAnnotationView(
+                annotation: annotation,
+                reuseIdentifier: CountryBitmojiAnnotationView.identifier
+            )
+            
+            view.configure(with: bitmojiAnnotation)
+            return view
+        }
+        
+        func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+            // Handle bitmoji tap
+            if let annotation = view.annotation as? CountryBitmojiAnnotation {
+                onBitmojiTapped?(annotation.countryID)
+                mapView.deselectAnnotation(annotation, animated: false)
+            }
         }
 
         func configure(renderer: MKOverlayPathRenderer, for overlay: MKOverlay) {
