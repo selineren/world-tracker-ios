@@ -61,8 +61,6 @@ final class CountryBoundaryService {
                 guard !overlays.isEmpty else { continue }
                 result[countryCode, default: []].append(contentsOf: overlays)
             }
-
-            print("🗺️ Loaded country overlays: \(result.keys.count) countries")
             
             return result
         } catch {

@@ -16,8 +16,9 @@ struct MapScreen: View {
     @State private var showSyncStatus = true
     @State private var selectedCountryForSheet: SelectedCountry?
     @State private var selectedCountryForDetail: Country?
-    @State private var mapZoomLevel: MapZoomLevel = .world
+    @State private var mapZoomLevel: MapZoomLevel = .continent
     @State private var showingStats = true
+    @State private var expandedCountryPreview: CountryPreviewData?
 
     var body: some View {
         NavigationStack {
@@ -26,8 +27,12 @@ struct MapScreen: View {
                 MapContainerView(
                     visitedCountryIDs: appState.visitedCountryIDs,
                     zoomLevel: $mapZoomLevel,
+                    bitmojiAnnotations: getBitmojiAnnotations(),
                     onCountryTapped: { countryID in
-                        selectedCountryForSheet = SelectedCountry(id: countryID)
+                        handleCountryTap(countryID: countryID)
+                    },
+                    onBitmojiTapped: { countryID in
+                        handleBitmojiTap(countryID: countryID)
                     }
                 )
                 .edgesIgnoringSafeArea(.top)
@@ -83,6 +88,47 @@ struct MapScreen: View {
                         
                         Spacer()
                     }
+                }
+                
+                // Expanded preview bubble (when tapping a bitmoji)
+                if let preview = expandedCountryPreview {
+                    ZStack {
+                        // Tap outside to dismiss
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation {
+                                    expandedCountryPreview = nil
+                                }
+                            }
+                        
+                        VStack {
+                            Spacer()
+                            
+                            HStack {
+                                Spacer()
+                                
+                                CountryMapPreviewBubble(
+                                    country: preview.country,
+                                    visit: preview.visit,
+                                    onDismiss: {
+                                        expandedCountryPreview = nil
+                                    },
+                                    onViewDetails: {
+                                        selectedCountryForDetail = preview.country
+                                        expandedCountryPreview = nil
+                                    }
+                                )
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 32)
+                            // Prevent tap from passing through to the background
+                            .onTapGesture { }
+                        }
+                    }
+                    .transition(.opacity)
                 }
             }
             .navigationTitle("Map")
@@ -323,6 +369,51 @@ struct MapScreen: View {
     
     // MARK: - Data Management
     
+    private func handleCountryTap(countryID: String) {
+        // Close any expanded preview first
+        expandedCountryPreview = nil
+        
+        // Always show quick action sheet (for both visited and unvisited)
+        selectedCountryForSheet = SelectedCountry(id: countryID)
+    }
+    
+    private func handleBitmojiTap(countryID: String) {
+        // Close any open quick action sheet first
+        selectedCountryForSheet = nil
+        
+        // Show expanded preview when tapping a bitmoji
+        let countries = CountryDataService.shared.loadCountries()
+        guard let country = countries.first(where: { $0.id == countryID }) else {
+            return
+        }
+        
+        let visit = appState.visit(for: countryID)
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            expandedCountryPreview = CountryPreviewData(country: country, visit: visit)
+        }
+    }
+    
+    private func getBitmojiAnnotations() -> [CountryBitmojiAnnotation] {
+        // Only show bitmojis at continent zoom or closer to avoid clutter
+        guard mapZoomLevel != .world else {
+            return []
+        }
+        
+        let countries = CountryDataService.shared.loadCountries()
+        
+        let annotations: [CountryBitmojiAnnotation] = appState.visitedCountryIDs.compactMap { countryID -> CountryBitmojiAnnotation? in
+            guard let country = countries.first(where: { $0.id == countryID }) else {
+                return nil
+            }
+            
+            let visit = appState.visit(for: countryID)
+            return CountryBitmojiAnnotation(country: country, visit: visit)
+        }
+        
+        return annotations
+    }
+    
     private func handleAuthStateChange() async {
         guard authService.isSignedIn else {
             return
@@ -513,13 +604,17 @@ struct CountryQuickActionSheet: View {
 struct MapContainerView: View {
     let visitedCountryIDs: Set<String>
     @Binding var zoomLevel: MapZoomLevel
+    let bitmojiAnnotations: [CountryBitmojiAnnotation]
     let onCountryTapped: ((String) -> Void)?
+    let onBitmojiTapped: ((String) -> Void)?
     
     var body: some View {
         VisitedCountriesMapView(
             visitedCountryIDs: visitedCountryIDs,
             zoomLevel: $zoomLevel,
-            onCountryTapped: onCountryTapped
+            onCountryTapped: onCountryTapped,
+            bitmojiAnnotations: bitmojiAnnotations,
+            onBitmojiTapped: onBitmojiTapped
         )
     }
 }
