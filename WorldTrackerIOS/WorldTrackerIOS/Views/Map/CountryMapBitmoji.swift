@@ -50,12 +50,8 @@ class CountryBitmojiAnnotationView: MKAnnotationView {
         iv.contentMode = .scaleAspectFill
         iv.clipsToBounds = true
         iv.layer.cornerRadius = 16
-        iv.layer.borderWidth = 2.5
+        iv.layer.borderWidth = 3.0
         iv.layer.borderColor = UIColor.white.cgColor
-        iv.layer.shadowColor = UIColor.black.cgColor
-        iv.layer.shadowOffset = CGSize(width: 0, height: 2)
-        iv.layer.shadowRadius = 4
-        iv.layer.shadowOpacity = 0.25
         return iv
     }()
     
@@ -63,12 +59,8 @@ class CountryBitmojiAnnotationView: MKAnnotationView {
         let container = UIView()
         container.backgroundColor = .systemBlue
         container.layer.cornerRadius = 16
-        container.layer.borderWidth = 2.5
+        container.layer.borderWidth = 3.0
         container.layer.borderColor = UIColor.white.cgColor
-        container.layer.shadowColor = UIColor.black.cgColor
-        container.layer.shadowOffset = CGSize(width: 0, height: 2)
-        container.layer.shadowRadius = 4
-        container.layer.shadowOpacity = 0.25
         
         let icon = UIImageView(image: UIImage(systemName: "note.text"))
         icon.tintColor = .white
@@ -90,12 +82,8 @@ class CountryBitmojiAnnotationView: MKAnnotationView {
         let container = UIView()
         container.backgroundColor = .systemGreen
         container.layer.cornerRadius = 16
-        container.layer.borderWidth = 2.5
+        container.layer.borderWidth = 3.0
         container.layer.borderColor = UIColor.white.cgColor
-        container.layer.shadowColor = UIColor.black.cgColor
-        container.layer.shadowOffset = CGSize(width: 0, height: 2)
-        container.layer.shadowRadius = 4
-        container.layer.shadowOpacity = 0.25
         return container
     }()
     
