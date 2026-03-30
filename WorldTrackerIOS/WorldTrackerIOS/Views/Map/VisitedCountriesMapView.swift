@@ -166,6 +166,9 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         
         // Cache overlay -> countryID lookups for performance
         private var overlayCountryCache: [ObjectIdentifier: String] = [:]
+        
+        // Cache renderers to avoid recreating them on every map render
+        private var rendererCache: [ObjectIdentifier: MKOverlayPathRenderer] = [:]
 
         init(visitedCountryIDs: Set<String>, zoomLevel: MapZoomLevel, onCountryTapped: ((String) -> Void)?, onBitmojiTapped: ((String) -> Void)?) {
             self.visitedCountryIDs = visitedCountryIDs
@@ -177,7 +180,12 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         // OPTIMIZATION: Update renderer colors without adding/removing overlays
         func updateRendererColors(for mapView: MKMapView) {
             for overlay in mapView.overlays {
-                if let renderer = mapView.renderer(for: overlay) as? MKOverlayPathRenderer {
+                let overlayID = ObjectIdentifier(overlay)
+                // Use cached renderer if available, otherwise get from mapView
+                if let renderer = rendererCache[overlayID] {
+                    configure(renderer: renderer, for: overlay)
+                    renderer.setNeedsDisplay()
+                } else if let renderer = mapView.renderer(for: overlay) as? MKOverlayPathRenderer {
                     configure(renderer: renderer, for: overlay)
                     renderer.setNeedsDisplay()
                 }
@@ -193,7 +201,7 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             // Check if we tapped on an annotation first
             // If so, don't process country tap
             for annotation in mapView.annotations {
-                if let annotationView = mapView.view(for: annotation) {
+                if mapView.view(for: annotation) != nil {
                     let annotationPoint = mapView.convert(annotation.coordinate, toPointTo: mapView)
                     let distance = hypot(point.x - annotationPoint.x, point.y - annotationPoint.y)
                     
@@ -256,19 +264,27 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            let overlayID = ObjectIdentifier(overlay)
+            
+            // Check cache first
+            if let cachedRenderer = rendererCache[overlayID] {
+                return cachedRenderer
+            }
+            
+            // Create new renderer
+            let renderer: MKOverlayPathRenderer
             if let polygon = overlay as? MKPolygon {
-                let renderer = MKPolygonRenderer(polygon: polygon)
-                configure(renderer: renderer, for: overlay)
-                return renderer
+                renderer = MKPolygonRenderer(polygon: polygon)
+            } else if let multiPolygon = overlay as? MKMultiPolygon {
+                renderer = MKMultiPolygonRenderer(multiPolygon: multiPolygon)
+            } else {
+                return MKOverlayRenderer(overlay: overlay)
             }
-
-            if let multiPolygon = overlay as? MKMultiPolygon {
-                let renderer = MKMultiPolygonRenderer(multiPolygon: multiPolygon)
-                configure(renderer: renderer, for: overlay)
-                return renderer
-            }
-
-            return MKOverlayRenderer(overlay: overlay)
+            
+            // Configure and cache
+            configure(renderer: renderer, for: overlay)
+            rendererCache[overlayID] = renderer
+            return renderer
         }
         
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
