@@ -78,10 +78,16 @@ final class AppState: ObservableObject {
     private func loadFromPersistence() {
         do {
             let stored = try repository.allVisits()
-            self.visits = Dictionary(uniqueKeysWithValues: stored.map { ($0.countryId, $0) })
-            self.visitedCountryIDs = Set(stored.filter { $0.isVisited }.map { $0.countryId })
+            let visitsDict = Dictionary(uniqueKeysWithValues: stored.map { ($0.countryId, $0) })
+            let visitedIDs = Set(stored.filter { $0.isVisited }.map { $0.countryId })
+            
+            // OPTIMIZATION: Batch update to trigger only one SwiftUI re-render
+            objectWillChange.send()
+            self.visits = visitsDict
+            self.visitedCountryIDs = visitedIDs
         } catch {
             print("⚠️ Failed to load visits from SwiftData: \(error)")
+            objectWillChange.send()
             self.visits = [:]
             self.visitedCountryIDs = []
         }
@@ -179,7 +185,11 @@ final class AppState: ObservableObject {
         }
         v.updatedAt = Date()
 
-        // Update UI immediately
+        // OPTIMIZATION: Batch updates to avoid multiple SwiftUI re-renders
+        // Use objectWillChange to manually trigger a single update
+        objectWillChange.send()
+        
+        // Update both properties without triggering individual notifications
         visits[countryId] = v
         if isVisited {
             visitedCountryIDs.insert(countryId)
@@ -202,6 +212,9 @@ final class AppState: ObservableObject {
         var v = visit(for: countryId)
         v.notes = notes
         v.updatedAt = Date()
+        
+        // OPTIMIZATION: Manual notification to avoid triggering @Published twice
+        objectWillChange.send()
         visits[countryId] = v
 
         do {
@@ -218,6 +231,9 @@ final class AppState: ObservableObject {
         var v = visit(for: countryId)
         v.photos.append(photo)
         v.updatedAt = Date()
+        
+        // OPTIMIZATION: Manual notification to avoid triggering @Published twice
+        objectWillChange.send()
         visits[countryId] = v
         
         do {
@@ -234,6 +250,9 @@ final class AppState: ObservableObject {
         var v = visit(for: countryId)
         v.photos.removeAll { $0.id == photoId }
         v.updatedAt = Date()
+        
+        // OPTIMIZATION: Manual notification to avoid triggering @Published twice
+        objectWillChange.send()
         visits[countryId] = v
         
         do {
@@ -251,6 +270,9 @@ final class AppState: ObservableObject {
         if let index = v.photos.firstIndex(where: { $0.id == photoId }) {
             v.photos[index].caption = caption
             v.updatedAt = Date()
+            
+            // OPTIMIZATION: Manual notification to avoid triggering @Published twice
+            objectWillChange.send()
             visits[countryId] = v
             
             do {
@@ -269,6 +291,8 @@ final class AppState: ObservableObject {
     }
     
     func clearLocalState() {
+        // OPTIMIZATION: Batch update to trigger only one SwiftUI re-render
+        objectWillChange.send()
         visits = [:]
         visitedCountryIDs = []
     }

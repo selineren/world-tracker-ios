@@ -11,10 +11,35 @@ import MapKit
 final class CountryDataService {
     static let shared = CountryDataService()
     
+    // OPTIMIZATION: Cache loaded countries in memory to avoid repeated disk I/O and parsing
+    private var countriesCache: [Country]?
+    private let cacheLock = NSLock()
+    
     private init() {}
     
-    /// Loads all countries from the GeoJSON file
+    /// Loads all countries from the GeoJSON file (cached after first load)
     func loadCountries() -> [Country] {
+        // Check cache first (thread-safe)
+        cacheLock.lock()
+        if let cached = countriesCache {
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+        
+        // Load from disk if not cached
+        let loaded = loadCountriesFromDisk()
+        
+        // Store in cache
+        cacheLock.lock()
+        countriesCache = loaded
+        cacheLock.unlock()
+        
+        return loaded
+    }
+    
+    /// Internal method that actually loads from disk
+    private func loadCountriesFromDisk() -> [Country] {
         guard let url = Bundle.main.url(forResource: "world_countries", withExtension: "geojson") else {
             print("⚠️ world_countries.geojson not found in bundle")
             return []
