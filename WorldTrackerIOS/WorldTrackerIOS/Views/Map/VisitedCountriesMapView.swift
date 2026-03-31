@@ -143,17 +143,46 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         // OPTIMIZATION: Only update renderer colors if visited countries changed
         // Don't add/remove overlays - they're all on the map already
         if oldVisitedIDs != visitedCountryIDs, context.coordinator.allOverlaysLoaded {
-            context.coordinator.updateRendererColors(for: mapView)
+            // Calculate the difference - only update changed countries
+            let added = visitedCountryIDs.subtracting(oldVisitedIDs)
+            let removed = oldVisitedIDs.subtracting(visitedCountryIDs)
+            let changedCountries = added.union(removed)
+            
+            context.coordinator.updateRendererColors(for: mapView, changedCountries: changedCountries)
         }
     }
     
     private func updateAnnotations(in mapView: MKMapView, coordinator: Coordinator) {
-        // Remove old bitmoji annotations
-        let oldAnnotations = mapView.annotations.compactMap { $0 as? CountryBitmojiAnnotation }
-        mapView.removeAnnotations(oldAnnotations)
+        let currentAnnotations = mapView.annotations.compactMap { $0 as? CountryBitmojiAnnotation }
         
-        // Add new bitmoji annotations
-        mapView.addAnnotations(bitmojiAnnotations)
+        // Create lookup sets for efficient comparison
+        let currentIDs = Set(currentAnnotations.map { $0.countryID })
+        let newIDs = Set(bitmojiAnnotations.map { $0.countryID })
+        
+        // Only remove annotations that are no longer needed
+        let toRemove = currentAnnotations.filter { !newIDs.contains($0.countryID) }
+        if !toRemove.isEmpty {
+            mapView.removeAnnotations(toRemove)
+        }
+        
+        // Only add annotations that are new
+        let toAdd = bitmojiAnnotations.filter { !currentIDs.contains($0.countryID) }
+        if !toAdd.isEmpty {
+            mapView.addAnnotations(toAdd)
+        }
+        
+        // Update existing annotations if their content changed (photos/notes)
+        // This is important when visit data changes but the country set stays the same
+        let existingToUpdate = bitmojiAnnotations.filter { newAnnotation in
+            currentIDs.contains(newAnnotation.countryID)
+        }
+        
+        for annotation in existingToUpdate {
+            // Find the existing annotation view and reconfigure it
+            if let annotationView = mapView.view(for: annotation) as? CountryBitmojiAnnotationView {
+                annotationView.configure(with: annotation)
+            }
+        }
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
@@ -177,17 +206,22 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             self.onBitmojiTapped = onBitmojiTapped
         }
         
-        // OPTIMIZATION: Update renderer colors without adding/removing overlays
-        func updateRendererColors(for mapView: MKMapView) {
-            for overlay in mapView.overlays {
-                let overlayID = ObjectIdentifier(overlay)
-                // Use cached renderer if available, otherwise get from mapView
-                if let renderer = rendererCache[overlayID] {
-                    configure(renderer: renderer, for: overlay)
-                    renderer.setNeedsDisplay()
-                } else if let renderer = mapView.renderer(for: overlay) as? MKOverlayPathRenderer {
-                    configure(renderer: renderer, for: overlay)
-                    renderer.setNeedsDisplay()
+        // OPTIMIZATION: Update renderer colors only for countries that changed
+        func updateRendererColors(for mapView: MKMapView, changedCountries: Set<String>) {
+            // Only iterate through overlays for countries that actually changed
+            for countryID in changedCountries {
+                guard let overlays = overlaysByCountry[countryID] else { continue }
+                
+                for overlay in overlays {
+                    let overlayID = ObjectIdentifier(overlay)
+                    // Use cached renderer if available, otherwise get from mapView
+                    if let renderer = rendererCache[overlayID] {
+                        configure(renderer: renderer, for: overlay)
+                        renderer.setNeedsDisplay()
+                    } else if let renderer = mapView.renderer(for: overlay) as? MKOverlayPathRenderer {
+                        configure(renderer: renderer, for: overlay)
+                        renderer.setNeedsDisplay()
+                    }
                 }
             }
         }
