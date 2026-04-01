@@ -52,6 +52,13 @@ struct CountryDetailScreen: View {
         )
     }
     
+    private var wantToVisitBinding: Binding<Bool> {
+        Binding(
+            get: { appState.wantToVisit(country.id) },
+            set: { appState.setWantToVisit(country.id, wantToVisit: $0) }
+        )
+    }
+    
     private var photos: [VisitPhoto] {
         appState.visits[country.id]?.photos ?? []
     }
@@ -73,7 +80,7 @@ struct CountryDetailScreen: View {
                 .padding(.vertical, 4)
             }
 
-            Section("Visit") {
+            Section("Travel Status") {
                 Toggle("Visited", isOn: isVisited)
 
                 if isVisited.wrappedValue {
@@ -83,6 +90,8 @@ struct CountryDetailScreen: View {
                         displayedComponents: [.date]
                     )
                 }
+                
+                Toggle("Want to Visit", isOn: wantToVisitBinding)
             }
 
             Section("Notes") {
