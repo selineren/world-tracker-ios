@@ -10,6 +10,7 @@ import Foundation
 struct Visit: Equatable {
     let countryId: String
     var isVisited: Bool
+    var wantToVisit: Bool
     var visitedDate: Date?
     var notes: String
     var photos: [VisitPhoto]

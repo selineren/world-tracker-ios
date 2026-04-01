@@ -42,8 +42,13 @@ final class FirestoreVisitRepository {
     func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date?, notes: String) async throws {
         let userID = try requireUserID()
 
+        // Fetch existing document to preserve wantToVisit field
+        let existingVisit = try? await self.visit(for: countryId)
+        let wantToVisit = existingVisit?.wantToVisit ?? false
+
         let data: [String: Any] = [
             "isVisited": isVisited,
+            "wantToVisit": wantToVisit,
             "visitedDate": visitedDate as Any,
             "notes": notes,
             "updatedAt": Timestamp(date: Date())
@@ -182,6 +187,9 @@ final class FirestoreVisitRepository {
             throw FirestoreVisitRepositoryError.invalidData
         }
 
+        // Backward compatible: default to false if field doesn't exist in Firestore
+        let wantToVisit = data["wantToVisit"] as? Bool ?? false
+        
         let notes = data["notes"] as? String ?? ""
 
         let visitedDate: Date?
@@ -218,6 +226,7 @@ final class FirestoreVisitRepository {
         return Visit(
             countryId: countryId,
             isVisited: isVisited,
+            wantToVisit: wantToVisit,
             visitedDate: finalVisitedDate,
             notes: notes,
             photos: photos,

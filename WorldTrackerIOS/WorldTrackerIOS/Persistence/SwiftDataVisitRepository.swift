@@ -23,6 +23,7 @@ final class SwiftDataVisitRepository: VisitRepository {
             return Visit(
                 countryId: entity.countryId,
                 isVisited: entity.isVisited,
+                wantToVisit: entity.wantToVisit,
                 visitedDate: entity.visitedDate,
                 notes: entity.notes,
                 photos: photos,
@@ -32,7 +33,7 @@ final class SwiftDataVisitRepository: VisitRepository {
 
         // default "not visited"
         print("📸 Creating new visit for \(countryId) - no existing entity")
-        return Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "", photos: [], updatedAt: Date())
+        return Visit(countryId: countryId, isVisited: false, wantToVisit: false, visitedDate: nil, notes: "", photos: [], updatedAt: Date())
     }
     
     func allVisits() throws -> [Visit] {
@@ -42,6 +43,7 @@ final class SwiftDataVisitRepository: VisitRepository {
             Visit(
                 countryId: $0.countryId,
                 isVisited: $0.isVisited,
+                wantToVisit: $0.wantToVisit,
                 visitedDate: $0.visitedDate,
                 notes: $0.notes,
                 photos: decodePhotos(from: $0.photosData),
@@ -125,6 +127,7 @@ final class SwiftDataVisitRepository: VisitRepository {
     func upsert(_ visit: Visit) throws {
         let entity = try fetchOrCreateEntity(countryId: visit.countryId)
         entity.isVisited = visit.isVisited
+        entity.wantToVisit = visit.wantToVisit
         
         // Enforce invariant: visited countries must have a date
         if visit.isVisited {
