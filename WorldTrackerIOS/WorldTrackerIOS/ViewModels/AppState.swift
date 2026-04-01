@@ -167,7 +167,7 @@ final class AppState: ObservableObject {
     }
     
     func visit(for countryId: String) -> Visit {
-        visits[countryId] ?? Visit(countryId: countryId, isVisited: false, visitedDate: nil, notes: "", photos: [], updatedAt: Date())
+        visits[countryId] ?? Visit(countryId: countryId, isVisited: false, wantToVisit: false, visitedDate: nil, notes: "", photos: [], updatedAt: Date())
     }
 
     func isVisited(_ countryId: String) -> Bool {
