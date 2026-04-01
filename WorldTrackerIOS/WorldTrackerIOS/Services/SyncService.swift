@@ -175,12 +175,13 @@ final class SyncService {
     }
 
     private func pushToCloud(_ visit: Visit) async throws {
-        // Use setVisited for the main data
+        // Use setVisited for the main data, including wantToVisit
         try await cloudRepository.setVisited(
             visit.countryId,
             isVisited: visit.isVisited,
             visitedDate: visit.visitedDate,
-            notes: visit.notes
+            notes: visit.notes,
+            wantToVisit: visit.wantToVisit  // Pass the local value
         )
         
         // Sync photos separately - don't fail the entire sync if photos fail
