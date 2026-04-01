@@ -26,6 +26,7 @@ struct MapScreen: View {
                 // OPTIMIZATION: Isolate map in separate view to prevent parent re-renders
                 MapContainerView(
                     visitedCountryIDs: appState.visitedCountryIDs,
+                    wantToVisitCountryIDs: appState.wantToVisitCountryIDs,
                     zoomLevel: $mapZoomLevel,
                     bitmojiAnnotations: getBitmojiAnnotations(),
                     onCountryTapped: { countryID in
@@ -603,6 +604,7 @@ struct CountryQuickActionSheet: View {
 /// Isolated map container to prevent unnecessary re-renders from parent view state changes
 struct MapContainerView: View {
     let visitedCountryIDs: Set<String>
+    let wantToVisitCountryIDs: Set<String>
     @Binding var zoomLevel: MapZoomLevel
     let bitmojiAnnotations: [CountryBitmojiAnnotation]
     let onCountryTapped: ((String) -> Void)?
@@ -611,6 +613,7 @@ struct MapContainerView: View {
     var body: some View {
         VisitedCountriesMapView(
             visitedCountryIDs: visitedCountryIDs,
+            wantToVisitCountryIDs: wantToVisitCountryIDs,
             zoomLevel: $zoomLevel,
             onCountryTapped: onCountryTapped,
             bitmojiAnnotations: bitmojiAnnotations,

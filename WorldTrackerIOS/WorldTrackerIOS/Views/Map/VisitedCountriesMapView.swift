@@ -40,6 +40,7 @@ extension MKCoordinateRegion {
 
 struct VisitedCountriesMapView: UIViewRepresentable {
     let visitedCountryIDs: Set<String>
+    let wantToVisitCountryIDs: Set<String>
     @Binding var zoomLevel: MapZoomLevel
     var onCountryTapped: ((String) -> Void)?
     var bitmojiAnnotations: [CountryBitmojiAnnotation] = []
@@ -48,6 +49,7 @@ struct VisitedCountriesMapView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(
             visitedCountryIDs: visitedCountryIDs,
+            wantToVisitCountryIDs: wantToVisitCountryIDs,
             zoomLevel: zoomLevel,
             onCountryTapped: onCountryTapped,
             onBitmojiTapped: onBitmojiTapped
@@ -107,11 +109,13 @@ struct VisitedCountriesMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
-        // Cache old value to detect actual changes
+        // Cache old values to detect actual changes
         let oldVisitedIDs = context.coordinator.visitedCountryIDs
+        let oldWantToVisitIDs = context.coordinator.wantToVisitCountryIDs
         
-        // Update the coordinator's visited countries set
+        // Update the coordinator's sets
         context.coordinator.visitedCountryIDs = visitedCountryIDs
+        context.coordinator.wantToVisitCountryIDs = wantToVisitCountryIDs
         
         // Update the callbacks
         context.coordinator.onCountryTapped = onCountryTapped
@@ -140,15 +144,23 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         // Update annotations
         updateAnnotations(in: mapView, coordinator: context.coordinator)
         
-        // OPTIMIZATION: Only update renderer colors if visited countries changed
+        // OPTIMIZATION: Only update renderer colors if visited or wantToVisit countries changed
         // Don't add/remove overlays - they're all on the map already
-        if oldVisitedIDs != visitedCountryIDs, context.coordinator.allOverlaysLoaded {
-            // Calculate the difference - only update changed countries
-            let added = visitedCountryIDs.subtracting(oldVisitedIDs)
-            let removed = oldVisitedIDs.subtracting(visitedCountryIDs)
-            let changedCountries = added.union(removed)
+        if oldVisitedIDs != visitedCountryIDs || oldWantToVisitIDs != wantToVisitCountryIDs {
+            if context.coordinator.allOverlaysLoaded {
+                // Calculate the difference - only update changed countries
+                let visitedAdded = visitedCountryIDs.subtracting(oldVisitedIDs)
+                let visitedRemoved = oldVisitedIDs.subtracting(visitedCountryIDs)
+                let wantToVisitAdded = wantToVisitCountryIDs.subtracting(oldWantToVisitIDs)
+                let wantToVisitRemoved = oldWantToVisitIDs.subtracting(wantToVisitCountryIDs)
+                
+                let changedCountries = visitedAdded
+                    .union(visitedRemoved)
+                    .union(wantToVisitAdded)
+                    .union(wantToVisitRemoved)
             
-            context.coordinator.updateRendererColors(for: mapView, changedCountries: changedCountries)
+                context.coordinator.updateRendererColors(for: mapView, changedCountries: changedCountries)
+            }
         }
     }
     
@@ -187,6 +199,7 @@ struct VisitedCountriesMapView: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var visitedCountryIDs: Set<String>
+        var wantToVisitCountryIDs: Set<String>
         var overlaysByCountry: [String: [MKOverlay]] = [:]
         var onCountryTapped: ((String) -> Void)?
         var onBitmojiTapped: ((String) -> Void)?
@@ -199,8 +212,9 @@ struct VisitedCountriesMapView: UIViewRepresentable {
         // Cache renderers to avoid recreating them on every map render
         private var rendererCache: [ObjectIdentifier: MKOverlayPathRenderer] = [:]
 
-        init(visitedCountryIDs: Set<String>, zoomLevel: MapZoomLevel, onCountryTapped: ((String) -> Void)?, onBitmojiTapped: ((String) -> Void)?) {
+        init(visitedCountryIDs: Set<String>, wantToVisitCountryIDs: Set<String>, zoomLevel: MapZoomLevel, onCountryTapped: ((String) -> Void)?, onBitmojiTapped: ((String) -> Void)?) {
             self.visitedCountryIDs = visitedCountryIDs
+            self.wantToVisitCountryIDs = wantToVisitCountryIDs
             self.currentZoomLevel = zoomLevel
             self.onCountryTapped = onCountryTapped
             self.onBitmojiTapped = onBitmojiTapped
@@ -350,12 +364,17 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             let countryID = countryID(for: overlay)
 
             if let countryID, visitedCountryIDs.contains(countryID) {
-                // Visited countries - vibrant green
+                // Priority 1: Visited countries - vibrant green
                 renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.7)
                 renderer.strokeColor = UIColor.systemGreen.withAlphaComponent(0.9)
                 renderer.lineWidth = 1.5
+            } else if let countryID, wantToVisitCountryIDs.contains(countryID) {
+                // Priority 2: Want to Visit countries - warm orange
+                renderer.fillColor = UIColor.systemOrange.withAlphaComponent(0.6)
+                renderer.strokeColor = UIColor.systemOrange.withAlphaComponent(0.8)
+                renderer.lineWidth = 1.2
             } else {
-                // Unvisited countries - neutral gray
+                // Priority 3: Unvisited countries - neutral gray
                 renderer.fillColor = UIColor.systemGray5.withAlphaComponent(0.85)
                 renderer.strokeColor = UIColor.systemGray3.withAlphaComponent(0.7)
                 renderer.lineWidth = 0.5
