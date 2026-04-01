@@ -80,6 +80,13 @@ final class SwiftDataVisitRepository: VisitRepository {
 
         try context.save()
     }
+    
+    func setWantToVisit(_ countryId: String, wantToVisit: Bool) throws {
+        let entity = try fetchOrCreateEntity(countryId: countryId)
+        entity.wantToVisit = wantToVisit
+        entity.updatedAt = Date()
+        try context.save()
+    }
 
     func updateNotes(_ countryId: String, notes: String) throws {
         let entity = try fetchOrCreateEntity(countryId: countryId)

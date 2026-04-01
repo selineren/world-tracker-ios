@@ -32,6 +32,7 @@ enum SyncStatus: Equatable {
 final class AppState: ObservableObject {
     @Published private(set) var visits: [String: Visit] = [:]
     @Published private(set) var visitedCountryIDs: Set<String> = []
+    @Published private(set) var wantToVisitCountryIDs: Set<String> = []
     @Published private(set) var syncStatus: SyncStatus = .idle
     @Published private(set) var isOffline = false
 
@@ -80,16 +81,19 @@ final class AppState: ObservableObject {
             let stored = try repository.allVisits()
             let visitsDict = Dictionary(uniqueKeysWithValues: stored.map { ($0.countryId, $0) })
             let visitedIDs = Set(stored.filter { $0.isVisited }.map { $0.countryId })
+            let wantToVisitIDs = Set(stored.filter { $0.wantToVisit }.map { $0.countryId })
             
             // OPTIMIZATION: Batch update to trigger only one SwiftUI re-render
             objectWillChange.send()
             self.visits = visitsDict
             self.visitedCountryIDs = visitedIDs
+            self.wantToVisitCountryIDs = wantToVisitIDs
         } catch {
             print("⚠️ Failed to load visits from SwiftData: \(error)")
             objectWillChange.send()
             self.visits = [:]
             self.visitedCountryIDs = []
+            self.wantToVisitCountryIDs = []
         }
     }
 
@@ -173,6 +177,10 @@ final class AppState: ObservableObject {
     func isVisited(_ countryId: String) -> Bool {
         visit(for: countryId).isVisited
     }
+    
+    func wantToVisit(_ countryId: String) -> Bool {
+        visit(for: countryId).wantToVisit
+    }
 
     func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date? = nil) {
         var v = visit(for: countryId)
@@ -180,6 +188,8 @@ final class AppState: ObservableObject {
 
         if isVisited {
             v.visitedDate = visitedDate ?? v.visitedDate ?? Date()
+            // MUTUAL EXCLUSIVITY: If marking as visited, clear wantToVisit
+            v.wantToVisit = false
         } else {
             v.visitedDate = nil
         }
@@ -193,18 +203,53 @@ final class AppState: ObservableObject {
         visits[countryId] = v
         if isVisited {
             visitedCountryIDs.insert(countryId)
+            wantToVisitCountryIDs.remove(countryId)  // Clear wantToVisit
         } else {
             visitedCountryIDs.remove(countryId)
         }
 
-        // Persist
+        // Persist - use upsert to save all fields including wantToVisit
         do {
-            try repository.setVisited(countryId, isVisited: isVisited, visitedDate: v.visitedDate)
+            try repository.upsert(v)
             Task {
                 await syncWithCloud(showStatus: false)
             }
         } catch {
             print("⚠️ Failed to persist setVisited: \(error)")
+        }
+    }
+    
+    func setWantToVisit(_ countryId: String, wantToVisit: Bool) {
+        var v = visit(for: countryId)
+        v.wantToVisit = wantToVisit
+        
+        if wantToVisit {
+            // MUTUAL EXCLUSIVITY: If marking as wantToVisit, clear visited
+            v.isVisited = false
+            v.visitedDate = nil
+        }
+        v.updatedAt = Date()
+        
+        // OPTIMIZATION: Batch updates to avoid multiple SwiftUI re-renders
+        objectWillChange.send()
+        
+        // Update all related properties atomically
+        visits[countryId] = v
+        if wantToVisit {
+            wantToVisitCountryIDs.insert(countryId)
+            visitedCountryIDs.remove(countryId)  // Clear visited
+        } else {
+            wantToVisitCountryIDs.remove(countryId)
+        }
+        
+        // Persist - use upsert to save all fields including isVisited
+        do {
+            try repository.upsert(v)
+            Task {
+                await syncWithCloud(showStatus: false)
+            }
+        } catch {
+            print("⚠️ Failed to persist setWantToVisit: \(error)")
         }
     }
 
@@ -290,11 +335,16 @@ final class AppState: ObservableObject {
         visits.values.filter { $0.isVisited }.count
     }
     
+    var wantToVisitCount: Int {
+        visits.values.filter { $0.wantToVisit }.count
+    }
+    
     func clearLocalState() {
         // OPTIMIZATION: Batch update to trigger only one SwiftUI re-render
         objectWillChange.send()
         visits = [:]
         visitedCountryIDs = []
+        wantToVisitCountryIDs = []
     }
     
     func clearLocalDataAfterSignOut() {

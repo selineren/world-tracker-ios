@@ -39,12 +39,8 @@ final class FirestoreVisitRepository {
         }
     }
 
-    func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date?, notes: String) async throws {
+    func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date?, notes: String, wantToVisit: Bool = false) async throws {
         let userID = try requireUserID()
-
-        // Fetch existing document to preserve wantToVisit field
-        let existingVisit = try? await self.visit(for: countryId)
-        let wantToVisit = existingVisit?.wantToVisit ?? false
 
         let data: [String: Any] = [
             "isVisited": isVisited,

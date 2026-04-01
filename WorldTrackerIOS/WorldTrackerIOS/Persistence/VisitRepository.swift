@@ -11,6 +11,7 @@ protocol VisitRepository {
     func visit(for countryId: String) throws -> Visit
     func allVisits() throws -> [Visit]
     func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date?) throws
+    func setWantToVisit(_ countryId: String, wantToVisit: Bool) throws
     func updateNotes(_ countryId: String, notes: String) throws
     func addPhoto(_ countryId: String, photo: VisitPhoto) throws
     func removePhoto(_ countryId: String, photoId: UUID) throws
