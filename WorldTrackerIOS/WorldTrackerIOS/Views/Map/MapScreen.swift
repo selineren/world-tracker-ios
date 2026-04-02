@@ -19,14 +19,42 @@ struct MapScreen: View {
     @State private var mapZoomLevel: MapZoomLevel = .continent
     @State private var showingStats = true
     @State private var expandedCountryPreview: CountryPreviewData?
+    @State private var filterMode: FilterMode = .all
+    
+    enum FilterMode: String, CaseIterable {
+        case all = "All"
+        case visited = "Visited"
+        case wishlist = "Wishlist"
+    }
+    
+    // Filtered country IDs based on filter mode
+    private var filteredVisitedCountryIDs: Set<String> {
+        switch filterMode {
+        case .all, .visited:
+            return appState.visitedCountryIDs
+        case .wishlist:
+            return []
+        }
+    }
+    
+    private var filteredWantToVisitCountryIDs: Set<String> {
+        switch filterMode {
+        case .all:
+            return appState.wantToVisitCountryIDs
+        case .visited:
+            return []
+        case .wishlist:
+            return appState.wantToVisitCountryIDs
+        }
+    }
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topLeading) {
                 // OPTIMIZATION: Isolate map in separate view to prevent parent re-renders
                 MapContainerView(
-                    visitedCountryIDs: appState.visitedCountryIDs,
-                    wantToVisitCountryIDs: appState.wantToVisitCountryIDs,
+                    visitedCountryIDs: filteredVisitedCountryIDs,
+                    wantToVisitCountryIDs: filteredWantToVisitCountryIDs,
                     zoomLevel: $mapZoomLevel,
                     bitmojiAnnotations: getBitmojiAnnotations(),
                     onCountryTapped: { countryID in
@@ -50,8 +78,18 @@ struct MapScreen: View {
                     
                     // Legend (bottom left)
                     legendCard
+                        .padding(.bottom, 80) // Move up to avoid filter bar
                 }
                 .padding()
+                
+                // Filter Picker (bottom center)
+                VStack {
+                    Spacer()
+                    
+                    filterPicker
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
+                }
                 
                 // Zoom Controls (right side)
                 VStack {
@@ -62,7 +100,7 @@ struct MapScreen: View {
                         
                         zoomControls
                             .padding(.trailing, 16)
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 100) // Move up to avoid filter bar
                     }
                 }
                 .padding(.top, 100) // Avoid overlap with navigation bar
@@ -289,6 +327,21 @@ struct MapScreen: View {
         }
     }
     
+    // MARK: - Filter Picker
+    
+    private var filterPicker: some View {
+        Picker("Filter", selection: $filterMode) {
+            ForEach(FilterMode.allCases, id: \.self) { mode in
+                Text(mode.rawValue).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(8)
+        .background(.ultraThinMaterial)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+    }
+    
     // MARK: - Stats Card
     
     private var statsCard: some View {
@@ -331,22 +384,37 @@ struct MapScreen: View {
                 .font(.caption.bold())
                 .foregroundStyle(.primary)
             
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(Color.green)
-                    .frame(width: 12, height: 12)
-                Text("Visited")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if filterMode == .all || filterMode == .visited {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 12, height: 12)
+                    Text("Visited")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(Color.gray.opacity(0.6))
-                    .frame(width: 12, height: 12)
-                Text("Not visited")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if filterMode == .all || filterMode == .wishlist {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 12, height: 12)
+                    Text("Wishlist")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            if filterMode == .all {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.gray.opacity(0.6))
+                        .frame(width: 12, height: 12)
+                    Text("Not visited")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(12)
@@ -398,6 +466,11 @@ struct MapScreen: View {
     private func getBitmojiAnnotations() -> [CountryBitmojiAnnotation] {
         // Only show bitmojis at continent zoom or closer to avoid clutter
         guard mapZoomLevel != .world else {
+            return []
+        }
+        
+        // Only show bitmojis for visited countries when in visited or all mode
+        guard filterMode == .all || filterMode == .visited else {
             return []
         }
         
