@@ -186,6 +186,22 @@ final class FirestoreVisitRepository {
         // Backward compatible: default to false if field doesn't exist in Firestore
         let wantToVisit = data["wantToVisit"] as? Bool ?? false
         
+        // VALIDATION: Enforce mutual exclusivity
+        // If cloud data has both states true (corrupted), visited takes priority
+        let validatedIsVisited: Bool
+        let validatedWantToVisit: Bool
+        
+        if isVisited && wantToVisit {
+            print("⚠️ Data integrity issue for \(countryId): both isVisited and wantToVisit are true")
+            print("   Resolving by prioritizing visited state (clearing wantToVisit)")
+            // Visited is more important state - it has a date and represents completed travel
+            validatedIsVisited = true
+            validatedWantToVisit = false
+        } else {
+            validatedIsVisited = isVisited
+            validatedWantToVisit = wantToVisit
+        }
+        
         let notes = data["notes"] as? String ?? ""
 
         let visitedDate: Date?
@@ -213,7 +229,7 @@ final class FirestoreVisitRepository {
         
         // Ensure visited countries have a date - if missing, use updatedAt as best guess
         let finalVisitedDate: Date?
-        if isVisited {
+        if validatedIsVisited {
             finalVisitedDate = visitedDate ?? updatedAt
         } else {
             finalVisitedDate = nil
@@ -221,8 +237,8 @@ final class FirestoreVisitRepository {
 
         return Visit(
             countryId: countryId,
-            isVisited: isVisited,
-            wantToVisit: wantToVisit,
+            isVisited: validatedIsVisited,
+            wantToVisit: validatedWantToVisit,
             visitedDate: finalVisitedDate,
             notes: notes,
             photos: photos,
