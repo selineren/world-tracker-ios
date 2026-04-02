@@ -183,6 +183,11 @@ final class AppState: ObservableObject {
     }
 
     func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date? = nil) {
+        // Store old state for rollback in case persistence fails
+        let oldVisit = visits[countryId]
+        let oldVisitedIDs = visitedCountryIDs
+        let oldWantToVisitIDs = wantToVisitCountryIDs
+        
         var v = visit(for: countryId)
         v.isVisited = isVisited
 
@@ -216,10 +221,28 @@ final class AppState: ObservableObject {
             }
         } catch {
             print("⚠️ Failed to persist setVisited: \(error)")
+            
+            // ROLLBACK: Restore old state to keep AppState consistent with DB
+            objectWillChange.send()
+            if let old = oldVisit {
+                visits[countryId] = old
+            } else {
+                visits.removeValue(forKey: countryId)
+            }
+            visitedCountryIDs = oldVisitedIDs
+            wantToVisitCountryIDs = oldWantToVisitIDs
+            
+            // Inform user via sync status
+            syncStatus = .error("Failed to save changes. Please try again.", isOffline: false)
         }
     }
     
     func setWantToVisit(_ countryId: String, wantToVisit: Bool) {
+        // Store old state for rollback in case persistence fails
+        let oldVisit = visits[countryId]
+        let oldVisitedIDs = visitedCountryIDs
+        let oldWantToVisitIDs = wantToVisitCountryIDs
+        
         var v = visit(for: countryId)
         v.wantToVisit = wantToVisit
         
@@ -250,6 +273,19 @@ final class AppState: ObservableObject {
             }
         } catch {
             print("⚠️ Failed to persist setWantToVisit: \(error)")
+            
+            // ROLLBACK: Restore old state to keep AppState consistent with DB
+            objectWillChange.send()
+            if let old = oldVisit {
+                visits[countryId] = old
+            } else {
+                visits.removeValue(forKey: countryId)
+            }
+            visitedCountryIDs = oldVisitedIDs
+            wantToVisitCountryIDs = oldWantToVisitIDs
+            
+            // Inform user via sync status
+            syncStatus = .error("Failed to save changes. Please try again.", isOffline: false)
         }
     }
 
