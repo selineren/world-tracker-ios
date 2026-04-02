@@ -194,6 +194,75 @@ struct StatsScreen: View {
                         Text("Quick Stats")
                     }
                     
+                    // MARK: - Visited Countries Preview
+                    if !visitedCountries.isEmpty {
+                        Section {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(visitedCountries) { country in
+                                        NavigationLink {
+                                            CountryDetailScreen(country: country)
+                                        } label: {
+                                            VStack(spacing: 4) {
+                                                Text(country.flagEmoji)
+                                                    .font(.system(size: 32))
+                                                Text(country.name)
+                                                    .font(.caption2)
+                                                    .lineLimit(1)
+                                                    .frame(width: 70)
+                                            }
+                                            .padding(8)
+                                            .background(.thinMaterial)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        } header: {
+                            Text("All Visited Countries")
+                        }
+                    }
+                    
+                    // MARK: - Travel Wishlist
+                    if !wantToVisitCountries.isEmpty {
+                        Section {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(wantToVisitCountries) { country in
+                                        NavigationLink {
+                                            CountryDetailScreen(country: country)
+                                        } label: {
+                                            VStack(spacing: 4) {
+                                                ZStack(alignment: .topTrailing) {
+                                                    Text(country.flagEmoji)
+                                                        .font(.system(size: 32))
+                                                    
+                                                    Image(systemName: "star.fill")
+                                                        .font(.caption2)
+                                                        .foregroundStyle(.orange)
+                                                        .offset(x: 4, y: -4)
+                                                }
+                                                Text(country.name)
+                                                    .font(.caption2)
+                                                    .lineLimit(1)
+                                                    .frame(width: 70)
+                                            }
+                                            .padding(8)
+                                            .background(.thinMaterial)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        } header: {
+                            Text("Travel Wishlist")
+                        }
+                    }
+                    
                     // MARK: - This Year Section
                     if !visitedThisYear.isEmpty {
                         Section {
@@ -298,75 +367,6 @@ struct StatsScreen: View {
                         }
                     } header: {
                         Text("Progress by Continent")
-                    }
-                    
-                    // MARK: - Visited Countries Preview
-                    if !visitedCountries.isEmpty {
-                        Section {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(visitedCountries) { country in
-                                        NavigationLink {
-                                            CountryDetailScreen(country: country)
-                                        } label: {
-                                            VStack(spacing: 4) {
-                                                Text(country.flagEmoji)
-                                                    .font(.system(size: 32))
-                                                Text(country.name)
-                                                    .font(.caption2)
-                                                    .lineLimit(1)
-                                                    .frame(width: 70)
-                                            }
-                                            .padding(8)
-                                            .background(.thinMaterial)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        } header: {
-                            Text("All Visited Countries")
-                        }
-                    }
-                    
-                    // MARK: - Travel Wishlist
-                    if !wantToVisitCountries.isEmpty {
-                        Section {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(wantToVisitCountries) { country in
-                                        NavigationLink {
-                                            CountryDetailScreen(country: country)
-                                        } label: {
-                                            VStack(spacing: 4) {
-                                                ZStack(alignment: .topTrailing) {
-                                                    Text(country.flagEmoji)
-                                                        .font(.system(size: 32))
-                                                    
-                                                    Image(systemName: "star.fill")
-                                                        .font(.caption2)
-                                                        .foregroundStyle(.orange)
-                                                        .offset(x: 4, y: -4)
-                                                }
-                                                Text(country.name)
-                                                    .font(.caption2)
-                                                    .lineLimit(1)
-                                                    .frame(width: 70)
-                                            }
-                                            .padding(8)
-                                            .background(.thinMaterial)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        } header: {
-                            Text("Travel Wishlist")
-                        }
                     }
                     
                     // MARK: - Recent Visits
