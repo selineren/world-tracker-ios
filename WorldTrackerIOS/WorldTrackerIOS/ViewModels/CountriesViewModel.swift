@@ -11,6 +11,7 @@ import Combine
 @MainActor
 final class CountriesViewModel: ObservableObject {
     @Published var searchText: String = ""
+    @Published var selectedContinent: Continent? = nil // nil = "All Continents"
     @Published private(set) var countries: [Country] = []
     @Published private(set) var isLoading = false
     @Published private(set) var loadError: String?
@@ -38,12 +39,30 @@ final class CountriesViewModel: ObservableObject {
         }
     }
     
+    var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    
+    var isFiltering: Bool {
+        selectedContinent != nil
+    }
+    
     var filteredCountries: [Country] {
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return countries
+        var result = countries
+        
+        // Apply continent filter first
+        if let continent = selectedContinent {
+            result = result.filter { $0.continent == continent }
         }
-        let q = searchText.lowercased()
-        return countries.filter { $0.name.lowercased().contains(q) }
+        
+        // Then apply search filter
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            let q = trimmed.lowercased()
+            result = result.filter { $0.name.lowercased().contains(q) }
+        }
+        
+        return result
     }
     
     var groupedByContinent: [(continent: Continent, countries: [Country])] {
