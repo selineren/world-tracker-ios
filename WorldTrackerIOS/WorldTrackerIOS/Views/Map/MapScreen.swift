@@ -191,7 +191,7 @@ struct MapScreen: View {
                         selectedCountryForSheet = nil
                     }
                 )
-                .presentationDetents([.height(280), .medium])
+                .presentationDetents([.height(340), .medium])
                 .presentationDragIndicator(.visible)
             }
             .navigationDestination(item: $selectedCountryForDetail) { country in
@@ -480,6 +480,10 @@ struct CountryQuickActionSheet: View {
         appState.isVisited(countryID)
     }
     
+    private var wantToVisit: Bool {
+        appState.wantToVisit(countryID)
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -544,6 +548,28 @@ struct CountryQuickActionSheet: View {
                     .padding(.leading)
                 
                 Button {
+                    toggleWantToVisit()
+                } label: {
+                    HStack {
+                        Image(systemName: wantToVisit ? "star.fill" : "star")
+                            .font(.title3)
+                            .foregroundStyle(wantToVisit ? .orange : .gray)
+                        
+                        Text(wantToVisit ? "Remove from Wishlist" : "Want to Visit")
+                            .font(.headline)
+                        
+                        Spacer()
+                    }
+                    .padding()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isVisited || country == nil)
+                
+                Divider()
+                    .padding(.leading)
+                
+                Button {
                     if let country = country {
                         onViewDetails(country)
                     }
@@ -588,6 +614,20 @@ struct CountryQuickActionSheet: View {
     private func toggleVisited() {
         let newState = !isVisited
         appState.setVisited(countryID, isVisited: newState)
+        
+        // Provide haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        // Dismiss after a short delay to show the state change
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            dismiss()
+        }
+    }
+    
+    private func toggleWantToVisit() {
+        let newState = !wantToVisit
+        appState.setWantToVisit(countryID, wantToVisit: newState)
         
         // Provide haptic feedback
         let generator = UIImpactFeedbackGenerator(style: .medium)
