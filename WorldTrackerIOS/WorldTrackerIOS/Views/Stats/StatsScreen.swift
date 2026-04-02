@@ -23,12 +23,21 @@ struct StatsScreen: View {
             .filter { $0.isVisited }
     }
     
+    private var wantToVisitVisits: [Visit] {
+        appState.visits.values
+            .filter { $0.wantToVisit }
+    }
+    
     private var totalCountriesCount: Int {
         vm.countries.count
     }
     
     private var visitedCountriesCount: Int {
         visitedVisits.count
+    }
+    
+    private var wantToVisitCount: Int {
+        wantToVisitVisits.count
     }
     
     private var visitedPercentage: Double {
@@ -39,6 +48,11 @@ struct StatsScreen: View {
     private var visitedCountries: [Country] {
         let visitedIDs = Set(visitedVisits.map { $0.countryId })
         return vm.countries.filter { visitedIDs.contains($0.id) }
+    }
+    
+    private var wantToVisitCountries: [Country] {
+        let wantToVisitIDs = Set(wantToVisitVisits.map { $0.countryId })
+        return vm.countries.filter { wantToVisitIDs.contains($0.id) }
     }
     
     private var visitedThisYear: [(country: Country, date: Date)] {
@@ -69,15 +83,17 @@ struct StatsScreen: View {
             .sorted { $0.date > $1.date }
     }
     
-    private var visitedByContinent: [(continent: Continent, visited: Int, total: Int, percentage: Double)] {
+    private var visitedByContinent: [(continent: Continent, visited: Int, wantToVisit: Int, total: Int, percentage: Double)] {
         let grouped = Dictionary(grouping: vm.countries, by: { $0.continent })
         
         return Continent.allCases.map { continent in
             let all = grouped[continent] ?? []
             let visitedIDs = Set(visitedVisits.map { $0.countryId })
+            let wantToVisitIDs = Set(wantToVisitVisits.map { $0.countryId })
             let visited = all.filter { visitedIDs.contains($0.id) }.count
+            let wantToVisit = all.filter { wantToVisitIDs.contains($0.id) }.count
             let percentage = all.count > 0 ? Double(visited) / Double(all.count) * 100 : 0
-            return (continent: continent, visited: visited, total: all.count, percentage: percentage)
+            return (continent: continent, visited: visited, wantToVisit: wantToVisit, total: all.count, percentage: percentage)
         }
         .filter { $0.total > 0 }
         .sorted { $0.percentage > $1.percentage }
@@ -115,7 +131,7 @@ struct StatsScreen: View {
                     // MARK: - Overview Section
                     Section {
                         VStack(alignment: .leading, spacing: 16) {
-                            // Main stat card
+                            // Main stat card - Visited
                             VStack(spacing: 8) {
                                 HStack(alignment: .firstTextBaseline) {
                                     Text("\(visitedCountriesCount)")
@@ -157,13 +173,23 @@ struct StatsScreen: View {
                     
                     // MARK: - Quick Stats
                     Section {
-                        QuickStatCard(
-                            icon: "calendar",
-                            value: "\(visitedThisYear.count)",
-                            label: "Visited This Year",
-                            color: .orange
-                        )
-                        .frame(height: 80)
+                        HStack(spacing: 8) {
+                            QuickStatCard(
+                                icon: "calendar",
+                                value: "\(visitedThisYear.count)",
+                                label: "Visited This Year",
+                                color: .orange
+                            )
+                            
+                            QuickStatCard(
+                                icon: "star.fill",
+                                value: "\(wantToVisitCount)",
+                                label: "Countries Wishlist",
+                                color: .orange
+                            )
+                            
+                        }
+                        .padding(.vertical, 8)
                     } header: {
                         Text("Quick Stats")
                     }
@@ -254,6 +280,19 @@ struct StatsScreen: View {
                                     }
                                 }
                                 .frame(height: 6)
+                                
+                                // Wishlist count
+                                if item.wantToVisit > 0 {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "star.fill")
+                                            .font(.caption2)
+                                            .foregroundStyle(.orange)
+                                        Text("\(item.wantToVisit) on wishlist")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.top, 2)
+                                }
                             }
                             .padding(.vertical, 4)
                         }
@@ -289,6 +328,44 @@ struct StatsScreen: View {
                             }
                         } header: {
                             Text("All Visited Countries")
+                        }
+                    }
+                    
+                    // MARK: - Travel Wishlist
+                    if !wantToVisitCountries.isEmpty {
+                        Section {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(wantToVisitCountries) { country in
+                                        NavigationLink {
+                                            CountryDetailScreen(country: country)
+                                        } label: {
+                                            VStack(spacing: 4) {
+                                                ZStack(alignment: .topTrailing) {
+                                                    Text(country.flagEmoji)
+                                                        .font(.system(size: 32))
+                                                    
+                                                    Image(systemName: "star.fill")
+                                                        .font(.caption2)
+                                                        .foregroundStyle(.orange)
+                                                        .offset(x: 4, y: -4)
+                                                }
+                                                Text(country.name)
+                                                    .font(.caption2)
+                                                    .lineLimit(1)
+                                                    .frame(width: 70)
+                                            }
+                                            .padding(8)
+                                            .background(.thinMaterial)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        } header: {
+                            Text("Travel Wishlist")
                         }
                     }
                     
@@ -406,34 +483,21 @@ struct StatsScreen: View {
         let color: Color
         
         var body: some View {
-            VStack(spacing: 8) {
+            VStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.title2)
+                    .font(.caption)
                     .foregroundStyle(color)
                 
                 Text(value)
-                    .font(.title3)
+                    .font(.headline)
                     .fontWeight(.semibold)
                 
                 Text(label)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
-        }
-    }
-    
-    private struct StatRow: View {
-        let title: String
-        let value: String
-        
-        var body: some View {
-            HStack {
-                Text(title)
-                Spacer()
-                Text(value)
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 }
