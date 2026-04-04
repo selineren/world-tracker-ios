@@ -1,176 +1,115 @@
 # World Tracker iOS
 
-World Tracker is an iOS application that allows users to track the countries they have visited around the world.
+A SwiftUI-based iOS application for tracking countries you've visited and those you want to visit, with interactive map visualization, personal notes, and cloud synchronization.
 
-Users can:
+## Overview
 
-* mark countries as visited
-* store visit dates and notes
-* visualize visited countries on a world map
-* track their travel statistics
+World Tracker helps users document their travel experiences by:
+- Marking countries as visited or on their wishlist
+- Adding photos and notes for each country
+- Visualizing their travel progress on an interactive map
+- Earning achievements as they explore more of the world
+- Syncing data across devices with Firebase
 
-The project was developed incrementally through multiple phases, focusing on architecture, persistence, and feature evolution.
+## Features
 
----
+### Core Functionality
+- **Country Tracking** – Mark countries as visited or want-to-visit
+- **Interactive Map** – Visual representation of tracked countries using MapKit with optimized rendering
+- **Photo & Notes** – Add personal memories and observations for each country
+- **Search & Filter** – Find countries by name or filter by continent
 
-# Tech Stack
+### Progress & Insights
+- **Stats Dashboard** – Track visited countries, continents, and world coverage percentage
+- **Achievements System** – Unlock milestones based on travel progress
 
-* Swift
-* SwiftUI
-* SwiftData
-* MapKit
-* Firebase Authentication
-* Cloud Firestore
-* MVVM Architecture
-* Repository Pattern
+### Sync & Reliability
+- **Firebase Authentication** – Secure user accounts with email/password
+- **Cloud Sync** – Automatic synchronization with Firestore
+- **Offline Support** – Full functionality without internet, with automatic sync recovery
 
----
+## Tech Stack
 
-# Architecture Overview
+**Frontend**
+- SwiftUI
+- MapKit
 
-The project follows a **clean MVVM architecture** with a repository layer that separates UI logic from persistence.
+**Data & Persistence**
+- SwiftData (local storage)
+- Firestore (cloud storage)
+- Firebase Authentication
 
-## View Layer
+**Patterns & Architecture**
+- MVVM (Model-View-ViewModel)
+- Repository Pattern (abstraction over local/cloud storage)
 
-SwiftUI views:
+## Architecture
 
-* Countries list
-* Country detail screen
-* Map screen
-* Stats screen
+The app follows a clean, layered architecture:
+┌─────────────────────────────────────┐
+│         SwiftUI Views               │
+├─────────────────────────────────────┤
+│      ViewModels (AppState)          │
+├─────────────────────────────────────┤
+│  Repository Layer (Local + Cloud)   │
+├─────────────────────────────────────┤
+│  SwiftData ←→ Sync ←→ Firestore     │
+└─────────────────────────────────────┘
 
-## State Management
+**Key Components:**
+- **AppState**: Central state management coordinating repositories and sync
+- **Repository Pattern**: Unified interface for local (SwiftData) and cloud (Firestore) data sources
+- **SyncService**: Handles bi-directional synchronization between local and cloud storage
+- **AuthService**: Manages Firebase authentication state
 
-`AppState` is responsible for:
+## Development Phases
 
-* managing UI state
-* coordinating data updates
-* communicating with the repository layer
+The project was built iteratively across multiple phases:
 
-## Repository Layer
+1. **Foundation** – Core SwiftUI setup, country data model, basic list view
+2. **Map Integration** – MapKit visualization with country boundaries and visit state rendering
+3. **Data Enrichment** – Added photos, notes, and want-to-visit functionality
+4. **Gamification** – Stats dashboard and achievements system
+5. **Search & Discovery** – Country search and continent-based filtering
+6. **Cloud Sync** – Firebase integration with authentication and Firestore synchronization
+7. **Optimization** – Map rendering performance improvements and offline support
 
-`VisitRepository` protocol abstracts the persistence layer.
+## How to Run
 
-Current implementation:
+### Prerequisites
+- Xcode 15.0 or later
+- iOS 17.0+ deployment target
+- Active internet connection (for Firebase features)
 
-* `SwiftDataVisitRepository`
+### Setup
 
-This abstraction allows switching persistence mechanisms without affecting UI code.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/world-tracker-ios.git
+   cd world-tracker-ios
 
-## Persistence
+2. Configure Firebase
+   • Create a Firebase project at firebase.google.com
+   • Add an iOS app to your Firebase project
+   • Download Google​Service​-​Info​.plist and add it to the Xcode project
+   • Enable Authentication (Email/Password) and Firestore Database in Firebase Console
 
-Visited country data is stored locally using **SwiftData** and can be synced to **Cloud Firestore** for authenticated users.
+3. Open in Xcode
+open WorldTrackerIOS.xcodeproj
 
-Stored fields:
+4. Run the app
+   • Select a simulator or connected device
+   • Press Cmd + ​R to build and run
 
-* `countryId`
-* `isVisited`
-* `visitedDate`
-* `notes`
-* `updatedAt`
+Notes
 
----
+Firebase Configuration
+The app requires a valid Google​Service​-​Info​.plist file for Firebase features to work. Without it, the app will fail to launch. If you want to run the app without Firebase, you'll need to modify the initialization code in WorldTrackerIOSApp.swift􀰓.
 
-# Development Phases
+Offline Mode
+The app fully supports offline usage. All changes made offline are queued and automatically synchronized when connectivity is restored.
 
-## Phase 1 — UI Foundation
+Country Data
+Country boundaries and geographic data are loaded from embedded GeoJSON files in the app bundle.
 
-**Goal:** Build the full UI structure using mock data.
-
-**Implemented:**
-
-* Countries list
-* Country detail screen
-* Visit toggle
-* Visit date picker
-* Notes editor
-* Basic tab navigation
-* Map and stats placeholders
-
----
-
-## Phase 2 — Data Architecture & Persistence
-
-**Goal:** Introduce local persistence.
-
-**Implemented:**
-
-* SwiftData setup
-* `VisitEntity` model
-* `VisitRepository` protocol
-* `SwiftDataVisitRepository` implementation
-* `AppState` integration with repository
-* Data persistence across app launches
-
----
-
-## Phase 3 — Map Integration
-
-**Goal:** Visualize visited countries geographically.
-
-**Implemented:**
-
-* MapKit integration
-* Visited countries rendered as map annotations
-* Annotation tap opens Country Detail screen
-* Map persistence using SwiftData data
-* QA validation
-
-📄 See `docs/PHASE3_QA.md` for full test documentation.
-
----
-
-## Phase 4 — Stats + Cloud Sync + Reliability
-
-**Goal:** Add authenticated cloud syncing, travel statistics, and improve reliability.
-
-**Implemented:**
-
-* Firebase Authentication integration
-* Firestore sync for visited countries
-* Sync-aware repository and state flow
-* Persisted user session handling
-* Expanded statistics dashboard
-* Improved reliability for relaunch and restore flows
-* Offline-aware data handling and resync support
-* Full QA validation
-
-### Firebase Setup
-
-To enable cloud sync locally:
-
-* Configure Firebase for the iOS target
-* Add `GoogleService-Info.plist` to the Xcode project
-
-### Sync Behavior
-
-* Visit data is stored per authenticated user
-* Changes to visits, notes, and dates sync to Firestore
-* Local data remains available on device
-* Offline edits are preserved and synced on reconnect
-* Firestore schema is defined in `docs/FIRESTORE_SCHEMA.md`
-
-📄 See `docs/PHASE4_QA.md` for full Phase 4 test coverage.
-
----
-
-# How to Run
-
-## Requirements
-
-* Xcode 15+
-* iOS 17+
-* macOS Sonoma or later
-
-## Steps
-
-1. Clone the repository
-2. Open `WorldTrackerIOS.xcodeproj`
-3. Select a simulator or connected device
-4. Run the project
-
----
-
-# License
-
-This project is developed for educational and internship purposes.
+Built with SwiftUI • Designed for iOS 17+
