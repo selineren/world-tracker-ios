@@ -46,15 +46,10 @@ World Tracker helps users document their travel experiences by:
 ## Architecture
 
 The app follows a clean, layered architecture:
-┌─────────────────────────────────────┐
-│         SwiftUI Views               │
-├─────────────────────────────────────┤
-│      ViewModels (AppState)          │
-├─────────────────────────────────────┤
-│  Repository Layer (Local + Cloud)   │
-├─────────────────────────────────────┤
-│  SwiftData ←→ Sync ←→ Firestore     │
-└─────────────────────────────────────┘
+- SwiftUI Views    
+- ViewModels (AppState) 
+- Repository Layer (Local + Cloud)
+- SwiftData ←→ Sync ←→ Firestore 
 
 **Key Components:**
 - **AppState**: Central state management coordinating repositories and sync
