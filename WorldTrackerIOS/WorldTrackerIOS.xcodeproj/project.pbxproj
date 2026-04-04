@@ -10,12 +10,10 @@
 		0424509F2F5EA5D200ECE1D6 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 0424509E2F5EA5D200ECE1D6 /* FirebaseAuth */; };
 		042450A12F5EA5D200ECE1D6 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 042450A02F5EA5D200ECE1D6 /* FirebaseCore */; };
 		042450A32F5EA5D200ECE1D6 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 042450A22F5EA5D200ECE1D6 /* FirebaseFirestore */; };
-		04D00A882F818A8800DDFF0A /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D00A872F818A8800DDFF0A /* Achievement.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		04ACF9D52F4E45E0004448FC /* WorldTrackerIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorldTrackerIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		04D00A872F818A8800DDFF0A /* Achievement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Achievement.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -45,7 +43,6 @@
 			children = (
 				04ACF9D72F4E45E0004448FC /* WorldTrackerIOS */,
 				04ACF9D62F4E45E0004448FC /* Products */,
-				04D00A872F818A8800DDFF0A /* Achievement.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -137,7 +134,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				04D00A882F818A8800DDFF0A /* Achievement.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
