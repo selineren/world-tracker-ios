@@ -15,9 +15,6 @@ struct CountryDetailScreen: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var editingCaptionPhotoId: UUID?
     @State private var editingCaption: String = ""
-    
-    // Force view to update when visits change by observing appState directly
-    @State private var refreshID = UUID()
 
     // MARK: - Clean bindings
 
@@ -118,7 +115,6 @@ struct CountryDetailScreen: View {
                 Text("Photos")
             }
         }
-        .id(appState.visits[country.id]?.updatedAt ?? Date()) // Force refresh when visit updates
         .navigationTitle(country.name)
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: selectedPhotoItem) { oldValue, newValue in

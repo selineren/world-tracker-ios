@@ -167,9 +167,12 @@ struct VisitedCountriesMapView: UIViewRepresentable {
     private func updateAnnotations(in mapView: MKMapView, coordinator: Coordinator) {
         let currentAnnotations = mapView.annotations.compactMap { $0 as? CountryBitmojiAnnotation }
         
-        // Create lookup sets for efficient comparison
-        let currentIDs = Set(currentAnnotations.map { $0.countryID })
-        let newIDs = Set(bitmojiAnnotations.map { $0.countryID })
+        // Create lookup dictionaries for efficient comparison
+        let currentByID = Dictionary(uniqueKeysWithValues: currentAnnotations.map { ($0.countryID, $0) })
+        let newByID = Dictionary(uniqueKeysWithValues: bitmojiAnnotations.map { ($0.countryID, $0) })
+        
+        let currentIDs = Set(currentByID.keys)
+        let newIDs = Set(newByID.keys)
         
         // Only remove annotations that are no longer needed
         let toRemove = currentAnnotations.filter { !newIDs.contains($0.countryID) }
@@ -183,16 +186,21 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             mapView.addAnnotations(toAdd)
         }
         
-        // Update existing annotations if their content changed (photos/notes)
-        // This is important when visit data changes but the country set stays the same
-        let existingToUpdate = bitmojiAnnotations.filter { newAnnotation in
-            currentIDs.contains(newAnnotation.countryID)
-        }
-        
-        for annotation in existingToUpdate {
-            // Find the existing annotation view and reconfigure it
-            if let annotationView = mapView.view(for: annotation) as? CountryBitmojiAnnotationView {
-                annotationView.configure(with: annotation)
+        // Update existing annotations if their visit data changed (photos/notes)
+        // This is critical when photos are added/removed but the country set stays the same
+        for countryID in currentIDs.intersection(newIDs) {
+            guard let currentAnnotation = currentByID[countryID],
+                  let newAnnotation = newByID[countryID] else { continue }
+            
+            // Check if the visit data actually changed
+            let visitChanged = currentAnnotation.visit != newAnnotation.visit
+            
+            if visitChanged {
+                // Find the existing annotation view using the OLD annotation that's on the map
+                if let annotationView = mapView.view(for: currentAnnotation) as? CountryBitmojiAnnotationView {
+                    // Reconfigure with the NEW visit data
+                    annotationView.configure(with: newAnnotation)
+                }
             }
         }
     }
