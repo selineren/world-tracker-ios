@@ -49,6 +49,10 @@ struct StatsScreen: View {
         vm.achievements(from: appState.visits)
     }
     
+    private var achievementSummary: (total: Int, unlocked: Int) {
+        AchievementEngine.achievementSummary(achievements)
+    }
+    
     private var visitedCountries: [Country] {
         let visitedIDs = Set(visitedVisits.map { $0.countryId })
         return vm.countries.filter { visitedIDs.contains($0.id) }
@@ -196,6 +200,20 @@ struct StatsScreen: View {
                         .padding(.vertical, 8)
                     } header: {
                         Text("Quick Stats")
+                    }
+                    
+                    // MARK: - Achievements
+                    Section {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(achievements) { achievement in
+                                    AchievementCard(achievement: achievement)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    } header: {
+                        Text("Achievements (\(achievementSummary.unlocked)/\(achievementSummary.total))")
                     }
                     
                     // MARK: - Visited Countries Preview
@@ -514,6 +532,38 @@ struct StatsScreen: View {
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
+        }
+    }
+    
+    private struct AchievementCard: View {
+        let achievement: Achievement
+        
+        var body: some View {
+            VStack(spacing: 6) {
+                // Achievement icon
+                Image(systemName: achievement.icon)
+                    .font(.system(size: 32))
+                    .foregroundStyle(achievement.isUnlocked ? .primary : .secondary)
+                    .opacity(achievement.isUnlocked ? 1.0 : 0.3)
+                
+                // Achievement title
+                Text(achievement.title)
+                    .font(.caption2)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(achievement.isUnlocked ? .primary : .secondary)
+                    .frame(height: 28) // Fixed height for alignment
+                
+                // Unlock indicator
+                Image(systemName: achievement.isUnlocked ? "checkmark.circle.fill" : "lock.fill")
+                    .font(.caption2)
+                    .foregroundStyle(achievement.isUnlocked ? .green : .secondary)
+            }
+            .frame(width: 85)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 8)
+            .background(.thinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 }
