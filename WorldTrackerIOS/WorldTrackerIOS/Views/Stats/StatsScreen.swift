@@ -45,6 +45,10 @@ struct StatsScreen: View {
         return Double(visitedCountriesCount) / Double(totalCountriesCount) * 100
     }
     
+    private var achievements: [Achievement] {
+        vm.achievements(from: appState.visits)
+    }
+    
     private var visitedCountries: [Country] {
         let visitedIDs = Set(visitedVisits.map { $0.countryId })
         return vm.countries.filter { visitedIDs.contains($0.id) }
@@ -471,6 +475,18 @@ struct StatsScreen: View {
                 self.isLoading = false
                 print("📊 Updated StatsViewModel with \(loadedCountries.count) countries")
             }
+        }
+        
+        // MARK: - Achievements
+        
+        /// Calculate achievements based on current visit data
+        /// - Parameter visits: Dictionary of all visits from AppState
+        /// - Returns: Array of achievements with unlock status
+        func achievements(from visits: [String: Visit]) -> [Achievement] {
+            return AchievementEngine.calculateAchievements(
+                visits: visits,
+                countries: countries
+            )
         }
     }
     
