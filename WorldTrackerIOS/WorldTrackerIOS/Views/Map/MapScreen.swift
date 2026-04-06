@@ -20,6 +20,7 @@ struct MapScreen: View {
     @State private var showingStats = true
     @State private var expandedCountryPreview: CountryPreviewData?
     @State private var filterMode: FilterMode = .all
+    @State private var totalCountries: Int = 0
     
     enum FilterMode: String, CaseIterable {
         case all = "All"
@@ -235,6 +236,11 @@ struct MapScreen: View {
             .navigationDestination(item: $selectedCountryForDetail) { country in
                 CountryDetailScreen(country: country)
             }
+            .task {
+                // Load total countries count from CountryDataService
+                let countries = CountryDataService.shared.loadCountries()
+                totalCountries = countries.count
+            }
         }
     }
     
@@ -358,14 +364,14 @@ struct MapScreen: View {
                 Text("\(appState.visitedCountryIDs.count)")
                     .font(.title.bold())
                     .foregroundStyle(.primary)
-                Text("/ 238")
+                Text("/ \(totalCountries)")
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
             
-            if appState.visitedCountryIDs.count > 0 {
-                let percentage = Double(appState.visitedCountryIDs.count) / 238.0 * 100
-                Text("\(Int(percentage))% of the world")
+            if appState.visitedCountryIDs.count > 0 && totalCountries > 0 {
+                let percentage = Double(appState.visitedCountryIDs.count) / Double(totalCountries) * 100
+                Text("\(percentage, specifier: "%.1f")% of the world")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
