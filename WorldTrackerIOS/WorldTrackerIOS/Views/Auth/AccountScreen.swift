@@ -12,6 +12,7 @@ struct AccountScreen: View {
     @EnvironmentObject private var appState: AppState
     @State private var errorMessage: String?
     @State private var totalCountries: Int = 0
+    @State private var countries: [Country] = []
     
     // MARK: - Computed Properties for Travel Stats
     
@@ -29,6 +30,31 @@ struct AccountScreen: View {
     private var visitedPercentage: Double {
         guard totalCountries > 0 else { return 0 }
         return Double(visitedCount) / Double(totalCountries) * 100
+    }
+    
+    /// Number of countries visited this year
+    private var visitedThisYear: Int {
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: Date())
+        
+        return appState.visits.values
+            .filter { $0.isVisited }
+            .filter { visit in
+                guard let date = visit.visitedDate else { return false }
+                return calendar.component(.year, from: date) == currentYear
+            }
+            .count
+    }
+    
+    /// Achievement summary (total and unlocked counts)
+    private var achievementSummary: (total: Int, unlocked: Int) {
+        guard !countries.isEmpty else { return (0, 0) }
+        
+        let achievements = AchievementEngine.calculateAchievements(
+            visits: appState.visits,
+            countries: countries
+        )
+        return AchievementEngine.achievementSummary(achievements)
     }
 
     var body: some View {
@@ -116,6 +142,64 @@ struct AccountScreen: View {
                         Text("Start marking countries as visited to track your travel journey!")
                     }
                 }
+                
+                // MARK: - Travel Highlights Section
+                Section {
+                    // Visited This Year
+                    HStack(spacing: 12) {
+                        Image(systemName: "calendar")
+                            .font(.title2)
+                            .foregroundStyle(.blue)
+                            .frame(width: 32)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(visitedThisYear) Visited This Year")
+                                .font(.headline)
+                            
+                            if visitedThisYear > 0 {
+                                Text("Great travel year!")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                let currentYear = Calendar.current.component(.year, from: Date())
+                                Text("Start your \(String(format: "%d", currentYear)) travels")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                    
+                    // Achievements
+                    HStack(spacing: 12) {
+                        Image(systemName: "trophy.fill")
+                            .font(.title2)
+                            .foregroundStyle(.yellow)
+                            .frame(width: 32)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(achievementSummary.unlocked)/\(achievementSummary.total) Achievements")
+                                .font(.headline)
+                            
+                            if achievementSummary.unlocked > 0 {
+                                Text("Keep exploring!")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("Unlock your first achievement")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Travel Highlights")
+                }
 
                 // MARK: - Sign Out Section
                 Section {
@@ -139,9 +223,10 @@ struct AccountScreen: View {
             }
             .navigationTitle("Account")
             .task {
-                // Load total countries count from CountryDataService
-                let countries = CountryDataService.shared.loadCountries()
-                totalCountries = countries.count
+                // Load countries and total count from CountryDataService
+                let loadedCountries = CountryDataService.shared.loadCountries()
+                countries = loadedCountries
+                totalCountries = loadedCountries.count
             }
         }
     }
