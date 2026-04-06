@@ -56,20 +56,88 @@ struct AccountScreen: View {
         )
         return AchievementEngine.achievementSummary(achievements)
     }
+    
+    // MARK: - Helper Functions for Profile Avatar
+    
+    /// Extract initials from email address
+    /// - Parameter email: User's email address
+    /// - Returns: 1-2 character initials (e.g., "JD" from "john.doe@example.com")
+    private func initials(from email: String) -> String {
+        // Get the part before @ symbol
+        let components = email.components(separatedBy: "@")
+        guard let namePart = components.first, !namePart.isEmpty else {
+            return "?" // Fallback for invalid email
+        }
+        
+        // Split by common separators (., _, -)
+        let nameComponents = namePart.components(separatedBy: CharacterSet(charactersIn: "._-"))
+            .filter { !$0.isEmpty }
+        
+        if nameComponents.count >= 2 {
+            // Two-letter initials from first two components (e.g., "john.doe" → "JD")
+            let first = nameComponents[0].prefix(1).uppercased()
+            let second = nameComponents[1].prefix(1).uppercased()
+            return first + second
+        } else if let first = nameComponents.first {
+            // Single letter from first component (e.g., "john" → "J")
+            return String(first.prefix(1).uppercased())
+        } else {
+            return "?" // Fallback
+        }
+    }
+    
+    /// Generate consistent avatar color from email
+    /// - Parameter email: User's email address
+    /// - Returns: Color that will be consistent for the same email across all app launches
+    private func avatarColor(for email: String) -> Color {
+        // Define a palette of pleasant colors for avatars
+        let colors: [Color] = [
+            .blue,
+            .green,
+            .orange,
+            .purple,
+            .pink,
+            .teal,
+            .indigo,
+            .cyan
+        ]
+        
+        // Generate stable hash from email using simple character-based algorithm
+        // This ensures the same email always produces the same color across all sessions
+        var hash = 0
+        for char in email.utf8 {
+            hash = (hash &* 31 &+ Int(char)) & 0x7FFFFFFF
+        }
+        
+        let index = hash % colors.count
+        return colors[index]
+    }
 
     var body: some View {
         NavigationStack {
             Form {
-                // MARK: - Session Section
-                Section("Session") {
-                    HStack {
-                        Image(systemName: "person.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.blue)
+                // MARK: - Profile Section
+                Section {
+                    VStack(spacing: 12) {
+                        // Avatar Circle with Initials
+                        ZStack {
+                            Circle()
+                                .fill(avatarColor(for: authService.userEmail))
+                                .frame(width: 64, height: 64)
+                            
+                            Text(initials(from: authService.userEmail))
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                         
+                        // Email
                         Text(authService.userEmail)
                             .font(.body)
+                            .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
                 }
                 
                 // MARK: - Travel Overview Section
