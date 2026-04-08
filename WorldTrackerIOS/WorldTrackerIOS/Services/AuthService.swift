@@ -92,6 +92,45 @@ final class AuthService: ObservableObject {
         
         try await user.updatePassword(to: newPassword)
     }
+    
+    /// Permanently delete the current user's account and all associated data
+    /// This is a destructive operation that cannot be undone
+    ///
+    /// The deletion process follows these steps:
+    /// 1. Reauthenticate the user with their current password (required by Firebase)
+    /// 2. Delete all visit documents from Firestore
+    /// 3. Delete the Firebase Authentication account
+    ///
+    /// - Parameter currentPassword: The user's current password for reauthentication
+    /// - Throws: Authentication errors, network errors, or Firestore errors
+    /// - Note: If any step fails, the process stops and throws an error. The auth state listener
+    ///         will automatically trigger sign-out cleanup if the account is successfully deleted.
+    func deleteAccount(currentPassword: String) async throws {
+        // Step 1: Reauthenticate user (required by Firebase for account deletion)
+        // This ensures the user is who they claim to be and refreshes their session token
+        try await reauthenticate(currentPassword: currentPassword)
+        
+        // Step 2: Delete all Firestore visit documents for this user
+        // Do this before deleting the auth account so we still have valid credentials
+        let firestoreRepository = FirestoreVisitRepository()
+        try await firestoreRepository.deleteAllUserVisits()
+        
+        // Step 3: Delete the Firebase Auth account
+        // This is the final, irreversible step
+        guard let user = Auth.auth().currentUser else {
+            throw NSError(
+                domain: "AuthService",
+                code: -3,
+                userInfo: [NSLocalizedDescriptionKey: "User session expired during account deletion"]
+            )
+        }
+        
+        try await user.delete()
+        
+        // Note: No need to call signOut() or clear local data here
+        // The auth state listener will detect the account deletion and trigger
+        // the sign-out flow automatically via authState change to .signedOut
+    }
 }
 enum AuthState {
     case unknown
