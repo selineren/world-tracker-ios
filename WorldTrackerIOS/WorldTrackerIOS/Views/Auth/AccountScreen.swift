@@ -13,6 +13,7 @@ struct AccountScreen: View {
     @State private var errorMessage: String?
     @State private var totalCountries: Int = 0
     @State private var countries: [Country] = []
+    @State private var showingChangePassword = false
     
     // MARK: - Computed Properties for Travel Stats
     
@@ -269,6 +270,28 @@ struct AccountScreen: View {
                     Text("Travel Highlights")
                 }
 
+                // MARK: - Settings Section
+                Section {
+                    Button {
+                        showingChangePassword = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "key.fill")
+                                .font(.title2)
+                                .foregroundStyle(.blue)
+                                .frame(width: 32)
+                            
+                            Text("Change Password")
+                                .foregroundStyle(.primary)
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("Settings")
+                }
+
                 // MARK: - Sign Out Section
                 Section {
                     Button("Sign Out", role: .destructive) {
@@ -290,6 +313,9 @@ struct AccountScreen: View {
                 }
             }
             .navigationTitle("Account")
+            .sheet(isPresented: $showingChangePassword) {
+                ChangePasswordView()
+            }
             .task {
                 // Load countries and total count from CountryDataService
                 let loadedCountries = CountryDataService.shared.loadCountries()
