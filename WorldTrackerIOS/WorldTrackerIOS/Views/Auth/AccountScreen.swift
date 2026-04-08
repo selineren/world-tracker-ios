@@ -14,6 +14,7 @@ struct AccountScreen: View {
     @State private var totalCountries: Int = 0
     @State private var countries: [Country] = []
     @State private var showingChangePassword = false
+    @State private var showingDeleteAccount = false
     
     // MARK: - Computed Properties for Travel Stats
     
@@ -288,6 +289,23 @@ struct AccountScreen: View {
                         }
                         .padding(.vertical, 4)
                     }
+                    
+                    Button {
+                        showingDeleteAccount = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "trash.fill")
+                                .font(.title2)
+                                .foregroundStyle(.red)
+                                .frame(width: 32)
+                            
+                            Text("Delete Account")
+                                .foregroundStyle(.red)
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
                 } header: {
                     Text("Settings")
                 }
@@ -315,6 +333,9 @@ struct AccountScreen: View {
             .navigationTitle("Account")
             .sheet(isPresented: $showingChangePassword) {
                 ChangePasswordView()
+            }
+            .sheet(isPresented: $showingDeleteAccount) {
+                DeleteAccountView()
             }
             .task {
                 // Load countries and total count from CountryDataService
