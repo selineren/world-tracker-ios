@@ -157,6 +157,30 @@ final class FirestoreVisitRepository {
                 .document(countryId)
         )
     }
+    
+    /// Delete all visit documents for the current user
+    /// Used during account deletion to clean up cloud data before removing the Firebase Auth account
+    /// - Throws: `FirestoreVisitRepositoryError.notAuthenticated` if no user is signed in
+    /// - Note: Succeeds silently if the user has no visit documents (empty collection is valid)
+    func deleteAllUserVisits() async throws {
+        let userID = try requireUserID()
+        
+        // Fetch all visit documents for this user
+        let snapshot = try await getDocuments(
+            from: db.collection("users")
+                .document(userID)
+                .collection("visits")
+        )
+        
+        // Delete each document individually
+        // Note: Firestore doesn't support batch deletes via the client SDK for collections,
+        // so we must delete each document separately
+        for document in snapshot.documents {
+            try await deleteDocument(document.reference)
+        }
+        
+        print("🗑️ Deleted \(snapshot.documents.count) visit document(s) for user \(userID)")
+    }
 
     // MARK: - Helpers
 
