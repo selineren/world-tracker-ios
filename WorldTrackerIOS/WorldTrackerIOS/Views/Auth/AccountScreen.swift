@@ -289,23 +289,6 @@ struct AccountScreen: View {
                         }
                         .padding(.vertical, 4)
                     }
-                    
-                    Button {
-                        showingDeleteAccount = true
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "trash.fill")
-                                .font(.title2)
-                                .foregroundStyle(.red)
-                                .frame(width: 32)
-                            
-                            Text("Delete Account")
-                                .foregroundStyle(.red)
-                            
-                            Spacer()
-                        }
-                        .padding(.vertical, 4)
-                    }
                 } header: {
                     Text("Settings")
                 }
@@ -320,6 +303,32 @@ struct AccountScreen: View {
                             errorMessage = error.localizedDescription
                         }
                     }
+                }
+                
+                // MARK: - Danger Zone Section
+                Section {
+                    Button {
+                        showingDeleteAccount = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.title2)
+                                .foregroundStyle(.red)
+                                .frame(width: 32)
+                            
+                            Text("Delete Account")
+                                .foregroundStyle(.red)
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("Danger Zone")
+                        .foregroundStyle(.red)
+                } footer: {
+                    Text("Deleting your account is permanent and cannot be undone. All your travel data will be lost.")
+                        .foregroundStyle(.red)
                 }
 
                 // MARK: - Error Section
