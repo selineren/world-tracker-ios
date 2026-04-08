@@ -62,6 +62,36 @@ final class AuthService: ObservableObject {
     func signOut() throws {
         try Auth.auth().signOut()
     }
+
+    /// Reauthenticate the current user with their password
+    /// Required by Firebase before sensitive operations like password changes
+    func reauthenticate(currentPassword: String) async throws {
+        guard let user = Auth.auth().currentUser,
+              let email = user.email else {
+            throw NSError(
+                domain: "AuthService",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "No user is currently signed in"]
+            )
+        }
+        
+        let credential = EmailAuthProvider.credential(withEmail: email, password: currentPassword)
+        try await user.reauthenticate(with: credential)
+    }
+
+    /// Update the current user's password to a new value
+    /// Note: User must be recently authenticated (call reauthenticate first)
+    func updatePassword(newPassword: String) async throws {
+        guard let user = Auth.auth().currentUser else {
+            throw NSError(
+                domain: "AuthService",
+                code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "User session expired"]
+            )
+        }
+        
+        try await user.updatePassword(to: newPassword)
+    }
 }
 enum AuthState {
     case unknown
