@@ -17,7 +17,7 @@ struct MapScreen: View {
     @State private var selectedCountryForSheet: SelectedCountry?
     @State private var selectedCountryForDetail: Country?
     @State private var mapZoomLevel: MapZoomLevel = .continent
-    @State private var showingStats = true
+    @State private var showingMapUI = true
     @State private var expandedCountryPreview: CountryPreviewData?
     @State private var filterMode: FilterMode = .all
     @State private var totalCountries: Int = 0
@@ -48,6 +48,14 @@ struct MapScreen: View {
             return appState.wantToVisitCountryIDs
         }
     }
+    
+    // Helper to determine if sync status is showing an error
+    private var isSyncError: Bool {
+        if case .error = appState.syncStatus {
+            return true
+        }
+        return false
+    }
 
     var body: some View {
         NavigationStack {
@@ -70,7 +78,7 @@ struct MapScreen: View {
                 // Overlay UI Elements - Left side
                 VStack(alignment: .leading, spacing: 12) {
                     // Stats Card (top left)
-                    if showingStats {
+                    if showingMapUI {
                         statsCard
                             .transition(.move(edge: .leading).combined(with: .opacity))
                     }
@@ -78,18 +86,24 @@ struct MapScreen: View {
                     Spacer()
                     
                     // Legend (bottom left)
-                    legendCard
-                        .padding(.bottom, 80) // Move up to avoid filter bar
+                    if showingMapUI {
+                        legendCard
+                            .padding(.bottom, 80) // Move up to avoid filter bar
+                            .transition(.move(edge: .leading).combined(with: .opacity))
+                    }
                 }
                 .padding()
                 
                 // Filter Picker (bottom center)
-                VStack {
-                    Spacer()
-                    
-                    filterPicker
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 20)
+                if showingMapUI {
+                    VStack {
+                        Spacer()
+                        
+                        filterPicker
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 20)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 
                 // Zoom Controls (right side)
@@ -101,13 +115,14 @@ struct MapScreen: View {
                         
                         zoomControls
                             .padding(.trailing, 16)
-                            .padding(.bottom, 100) // Move up to avoid filter bar
+                            .padding(.bottom, showingMapUI ? 100 : 20) // Adjust for filter bar
                     }
                 }
                 .padding(.top, 100) // Avoid overlap with navigation bar
                 
                 // Sync status indicator (top center)
-                if showSyncStatus {
+                // Keep showing errors even when UI is hidden, but hide success/idle messages
+                if showSyncStatus && (showingMapUI || isSyncError) {
                     VStack {
                         SyncStatusView(
                             status: appState.syncStatus,
@@ -177,10 +192,10 @@ struct MapScreen: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         withAnimation(.spring(response: 0.3)) {
-                            showingStats.toggle()
+                            showingMapUI.toggle()
                         }
                     } label: {
-                        Image(systemName: showingStats ? "chart.bar.fill" : "chart.bar")
+                        Image(systemName: showingMapUI ? "eye.fill" : "eye.slash.fill")
                     }
                 }
                 
