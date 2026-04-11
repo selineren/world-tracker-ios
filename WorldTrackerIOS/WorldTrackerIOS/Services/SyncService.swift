@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import FirebaseAuth
 
 @MainActor
 final class SyncService {
@@ -33,6 +34,12 @@ final class SyncService {
     func syncVisits(withRetry: Bool = true) async throws {
         print("🌐 Network status check: isConnected = \(networkMonitor.isConnected)")
         
+        // AUTH GUARD: Don't sync if user is not authenticated
+        guard Auth.auth().currentUser != nil else {
+            print("⚠️ Sync skipped: User is not authenticated")
+            throw FirestoreVisitRepositoryError.notAuthenticated
+        }
+        
         // Prevent concurrent syncs
         guard !isSyncing else {
             print("⚠️ Sync already in progress, skipping")
@@ -54,7 +61,12 @@ final class SyncService {
                 print("✅ Sync complete on attempt \(attempt)")
                 return
             } catch let error as SyncError where error == .noConnection {
-                // Don't retry if no connection
+                // Don't retry network errors - user needs to fix connectivity
+                print("❌ Sync failed: No connection (will not retry)")
+                throw error
+            } catch let error as FirestoreVisitRepositoryError where error == .notAuthenticated {
+                // Don't retry auth errors - user needs to sign in
+                print("❌ Sync failed: User not authenticated (will not retry)")
                 throw error
             } catch {
                 lastError = error

@@ -191,8 +191,9 @@ struct AuthScreen: View {
             } else {
                 try await authService.signIn(email: email, password: password)
             }
-
-            await appState.syncWithCloud()
+            
+            // No need to manually call sync here - WorldTrackerIOSApp.handleAuthStateChange()
+            // will automatically trigger appState.handleSignIn() which includes sync
         } catch {
             withAnimation(.easeInOut(duration: 0.3)) {
                 errorMessage = friendlyErrorMessage(from: error)
