@@ -134,6 +134,12 @@ final class AppState: ObservableObject {
                 syncStatus = .error("No internet connection", isOffline: true)
                 print("📊 Status set to: offline error")
             }
+        } catch let error as FirestoreVisitRepositoryError where error == .notAuthenticated {
+            print("⚠️ Sync failed: User not authenticated")
+            if showStatus {
+                syncStatus = .error("Please sign in to sync your data", isOffline: false)
+                print("📊 Status set to: auth error")
+            }
         } catch {
             print("⚠️ Sync failed: \(error)")
             let message = error.localizedDescription
