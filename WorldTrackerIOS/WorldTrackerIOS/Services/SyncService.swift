@@ -32,7 +32,9 @@ final class SyncService {
     }
 
     func syncVisits(withRetry: Bool = true) async throws {
+        #if DEBUG
         print("🌐 Network status check: isConnected = \(networkMonitor.isConnected)")
+        #endif
         
         // AUTH GUARD: Don't sync if user is not authenticated
         guard Auth.auth().currentUser != nil else {
@@ -42,14 +44,18 @@ final class SyncService {
         
         // Prevent concurrent syncs
         guard !isSyncing else {
+            #if DEBUG
             print("⚠️ Sync already in progress, skipping")
+            #endif
             return
         }
         
         isSyncing = true
         defer { isSyncing = false }
         
+        #if DEBUG
         print("🔄 Starting sync...")
+        #endif
         
         var lastError: Error?
         let attempts = withRetry ? maxRetries : 1
@@ -58,7 +64,9 @@ final class SyncService {
             do {
                 try await performSync()
                 lastSyncDate = Date()
+                #if DEBUG
                 print("✅ Sync complete on attempt \(attempt)")
+                #endif
                 return
             } catch let error as SyncError where error == .noConnection {
                 // Don't retry network errors - user needs to fix connectivity
@@ -70,11 +78,15 @@ final class SyncService {
                 throw error
             } catch {
                 lastError = error
+                #if DEBUG
                 print("⚠️ Sync attempt \(attempt) failed: \(error)")
+                #endif
                 
                 // If we have more attempts, wait before retrying
                 if attempt < attempts {
+                    #if DEBUG
                     print("⏳ Retrying in \(retryDelay) seconds...")
+                    #endif
                     try await Task.sleep(for: .seconds(retryDelay))
                     // Removed network check - let the actual sync attempt determine if there's a connection
                 }
@@ -133,13 +145,17 @@ final class SyncService {
                     break
                 }
             } catch {
+                #if DEBUG
                 print("⚠️ Failed to sync country \(countryId): \(error)")
+                #endif
                 errorCount += 1
                 // Continue with other countries
             }
         }
             
+            #if DEBUG
             print("✅ Sync complete: \(syncedCount) synced, \(errorCount) errors")
+            #endif
             
             // If there were any errors, throw an aggregate error
             if errorCount > 0 {
@@ -150,13 +166,17 @@ final class SyncService {
             let nsError = error as NSError
             let errorDescription = error.localizedDescription.lowercased()
             
+            #if DEBUG
             print("🔍 Error details - Domain: \(nsError.domain), Code: \(nsError.code)")
             print("🔍 Error description: \(error.localizedDescription)")
             print("🔍 NetworkMonitor.isConnected: \(networkMonitor.isConnected)")
+            #endif
             
             // Check if it's our custom offline error
             if let repoError = error as? FirestoreVisitRepositoryError, repoError == .offline {
+                #if DEBUG
                 print("❌ Firestore offline error detected (from cache check)")
+                #endif
                 throw SyncError.noConnection
             }
             
@@ -176,10 +196,14 @@ final class SyncService {
                                 !networkMonitor.isConnected
             
             if isNetworkError {
+                #if DEBUG
                 print("❌ Network error detected: \(error)")
+                #endif
                 throw SyncError.noConnection
             } else {
+                #if DEBUG
                 print("❌ Non-network error detected: \(error)")
+                #endif
                 // Re-throw other errors
                 throw error
             }

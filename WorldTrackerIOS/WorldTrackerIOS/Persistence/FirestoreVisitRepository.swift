@@ -179,7 +179,11 @@ final class FirestoreVisitRepository {
             try await deleteDocument(document.reference)
         }
         
+        #if DEBUG
         print("🗑️ Deleted \(snapshot.documents.count) visit document(s) for user \(userID)")
+        #else
+        print("🗑️ Deleted \(snapshot.documents.count) visit document(s)")
+        #endif
     }
 
     // MARK: - Helpers
@@ -216,8 +220,10 @@ final class FirestoreVisitRepository {
         let validatedWantToVisit: Bool
         
         if isVisited && wantToVisit {
+            #if DEBUG
             print("⚠️ Data integrity issue for \(countryId): both isVisited and wantToVisit are true")
             print("   Resolving by prioritizing visited state (clearing wantToVisit)")
+            #endif
             // Visited is more important state - it has a date and represents completed travel
             validatedIsVisited = true
             validatedWantToVisit = false
@@ -296,23 +302,31 @@ final class FirestoreVisitRepository {
             // Use source: .server to force network fetch, not cache
             ref.getDocuments(source: .server) { snapshot, error in
                 if let error {
+                    #if DEBUG
                     print("🔥 Firestore error: \(error)")
+                    #endif
                     continuation.resume(throwing: self.mapError(error))
                     return
                 }
 
                 guard let snapshot else {
+                    #if DEBUG
                     print("🔥 Firestore: No snapshot returned")
+                    #endif
                     continuation.resume(throwing: FirestoreVisitRepositoryError.invalidData)
                     return
                 }
                 
+                #if DEBUG
                 // Check if this data came from cache despite requesting server
                 print("🔥 Firestore snapshot: \(snapshot.documents.count) docs, metadata.isFromCache: \(snapshot.metadata.isFromCache)")
+                #endif
                 
                 // If we requested server but got cache, and we're offline, throw error
                 if snapshot.metadata.isFromCache {
+                    #if DEBUG
                     print("⚠️ Received cached data when server was requested - treating as offline")
+                    #endif
                     continuation.resume(throwing: FirestoreVisitRepositoryError.offline)
                     return
                 }

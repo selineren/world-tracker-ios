@@ -13,7 +13,9 @@ struct StatsScreen: View {
     @StateObject private var vm = StatsViewModel()
     
     init() {
+        #if DEBUG
         print("🎨 StatsScreen initialized")
+        #endif
     }
     
     // MARK: - Computed stats
@@ -475,23 +477,33 @@ struct StatsScreen: View {
         private let service = CountryDataService.shared
         
         init() {
+            #if DEBUG
             print("📊 StatsViewModel initialized")
+            #endif
             load()
         }
         
         func load() {
+            #if DEBUG
             print("📊 StatsViewModel.load() called")
+            #endif
             isLoading = true
             
             // Load countries
             Task(priority: .userInitiated) {
+                #if DEBUG
                 print("📊 About to call CountryDataService.loadCountries()")
+                #endif
                 let loadedCountries = service.loadCountries()
+                #if DEBUG
                 print("📊 Received \(loadedCountries.count) countries from service")
+                #endif
                 
                 self.countries = loadedCountries
                 self.isLoading = false
+                #if DEBUG
                 print("📊 Updated StatsViewModel with \(loadedCountries.count) countries")
+                #endif
             }
         }
         

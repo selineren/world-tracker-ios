@@ -89,7 +89,9 @@ final class AppState: ObservableObject {
             self.visitedCountryIDs = visitedIDs
             self.wantToVisitCountryIDs = wantToVisitIDs
         } catch {
+            #if DEBUG
             print("⚠️ Failed to load visits from SwiftData: \(error)")
+            #endif
             objectWillChange.send()
             self.visits = [:]
             self.visitedCountryIDs = []
@@ -103,22 +105,30 @@ final class AppState: ObservableObject {
     
     func syncWithCloud(showStatus: Bool = true) async {
         guard let syncService else { 
+            #if DEBUG
             print("⚠️ Sync service not available")
+            #endif
             return 
         }
 
         // Prevent concurrent syncs
         guard !isSyncing else {
+            #if DEBUG
             print("⚠️ Sync already in progress")
+            #endif
             return
         }
         
+        #if DEBUG
         print("🔄 syncWithCloud called (showStatus: \(showStatus))")
+        #endif
         
         // Set syncing state immediately (before network check)
         if showStatus {
             syncStatus = .syncing
+            #if DEBUG
             print("📊 Status set to: syncing")
+            #endif
         }
 
         do {
@@ -126,38 +136,54 @@ final class AppState: ObservableObject {
             loadFromPersistence()
             if showStatus {
                 syncStatus = .success(Date())
+                #if DEBUG
                 print("✅ Status set to: success")
+                #endif
             }
         } catch let error as SyncError where error == .noConnection {
             print("⚠️ Sync failed: No connection")
             if showStatus {
                 syncStatus = .error("No internet connection", isOffline: true)
+                #if DEBUG
                 print("📊 Status set to: offline error")
+                #endif
             }
         } catch let error as FirestoreVisitRepositoryError where error == .notAuthenticated {
             print("⚠️ Sync failed: User not authenticated")
             if showStatus {
                 syncStatus = .error("Please sign in to sync your data", isOffline: false)
+                #if DEBUG
                 print("📊 Status set to: auth error")
+                #endif
             }
         } catch {
+            #if DEBUG
             print("⚠️ Sync failed: \(error)")
+            #endif
             let message = error.localizedDescription
             if showStatus {
                 syncStatus = .error(message, isOffline: false)
+                #if DEBUG
                 print("📊 Status set to: error - \(message)")
+                #endif
             }
         }
     }
     
     func retrySyncIfNeeded() async {
+        #if DEBUG
         print("🔁 retrySyncIfNeeded called, current status: \(syncStatus)")
+        #endif
         // Retry for any error state (including offline - user might have turned WiFi back on)
         if case .error = syncStatus {
+            #if DEBUG
             print("🔁 Retrying sync...")
+            #endif
             await syncWithCloud()
         } else {
+            #if DEBUG
             print("⚠️ Not retrying - not in error state")
+            #endif
         }
     }
     
@@ -226,7 +252,9 @@ final class AppState: ObservableObject {
                 await syncWithCloud(showStatus: false)
             }
         } catch {
+            #if DEBUG
             print("⚠️ Failed to persist setVisited: \(error)")
+            #endif
             
             // ROLLBACK: Restore old state to keep AppState consistent with DB
             objectWillChange.send()
@@ -278,7 +306,9 @@ final class AppState: ObservableObject {
                 await syncWithCloud(showStatus: false)
             }
         } catch {
+            #if DEBUG
             print("⚠️ Failed to persist setWantToVisit: \(error)")
+            #endif
             
             // ROLLBACK: Restore old state to keep AppState consistent with DB
             objectWillChange.send()
@@ -310,7 +340,9 @@ final class AppState: ObservableObject {
                 await syncWithCloud(showStatus: false)
             }
         } catch {
+            #if DEBUG
             print("⚠️ Failed to persist updateNotes: \(error)")
+            #endif
         }
     }
     
@@ -329,7 +361,9 @@ final class AppState: ObservableObject {
                 await syncWithCloud(showStatus: false)
             }
         } catch {
+            #if DEBUG
             print("⚠️ Failed to persist addPhoto: \(error)")
+            #endif
         }
     }
     
@@ -348,7 +382,9 @@ final class AppState: ObservableObject {
                 await syncWithCloud(showStatus: false)
             }
         } catch {
+            #if DEBUG
             print("⚠️ Failed to persist removePhoto: \(error)")
+            #endif
         }
     }
     
@@ -368,7 +404,9 @@ final class AppState: ObservableObject {
                     await syncWithCloud(showStatus: false)
                 }
             } catch {
+                #if DEBUG
                 print("⚠️ Failed to persist updatePhotoCaption: \(error)")
+                #endif
             }
         }
     }
@@ -396,7 +434,9 @@ final class AppState: ObservableObject {
             }
             clearLocalState()
         } catch {
+            #if DEBUG
             print("⚠️ Failed to clear local data after sign out: \(error)")
+            #endif
         }
     }
 }
