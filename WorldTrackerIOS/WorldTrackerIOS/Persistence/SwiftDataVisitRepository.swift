@@ -19,7 +19,9 @@ final class SwiftDataVisitRepository: VisitRepository {
     func visit(for countryId: String) throws -> Visit {
         if let entity = try fetchEntity(countryId: countryId) {
             let photos = decodePhotos(from: entity.photosData)
+            #if DEBUG
             print("📸 Loading visit for \(countryId) - photos count: \(photos.count)")
+            #endif
             return Visit(
                 countryId: entity.countryId,
                 isVisited: entity.isVisited,
@@ -32,7 +34,9 @@ final class SwiftDataVisitRepository: VisitRepository {
         }
 
         // default "not visited"
+        #if DEBUG
         print("📸 Creating new visit for \(countryId) - no existing entity")
+        #endif
         return Visit(countryId: countryId, isVisited: false, wantToVisit: false, visitedDate: nil, notes: "", photos: [], updatedAt: Date())
     }
     
@@ -98,17 +102,21 @@ final class SwiftDataVisitRepository: VisitRepository {
     func addPhoto(_ countryId: String, photo: VisitPhoto) throws {
         let entity = try fetchOrCreateEntity(countryId: countryId)
         var photos = decodePhotos(from: entity.photosData)
+        #if DEBUG
         print("📸 Before adding photo - Country: \(countryId), existing photos: \(photos.count)")
+        #endif
         photos.append(photo)
         entity.photosData = encodePhotos(photos)
         entity.updatedAt = Date()
         try context.save()
+        #if DEBUG
         print("📸 After saving photo - Country: \(countryId), total photos: \(photos.count)")
         
         // Verify save
         let verifyEntity = try fetchEntity(countryId: countryId)
         let verifyPhotos = decodePhotos(from: verifyEntity?.photosData)
         print("📸 Verification - Country: \(countryId), photos in DB: \(verifyPhotos.count)")
+        #endif
     }
     
     func removePhoto(_ countryId: String, photoId: UUID) throws {

@@ -47,7 +47,9 @@ final class NetworkMonitor: ObservableObject, @unchecked Sendable {
                     self.connectionType = .unknown
                 }
                 
+                #if DEBUG
                 print("📡 Network status: \(self.isConnected ? "Connected" : "Disconnected") (\(self.connectionType))")
+                #endif
             }
         }
         
