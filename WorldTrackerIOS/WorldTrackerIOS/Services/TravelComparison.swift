@@ -10,7 +10,7 @@ import Foundation
 // MARK: - Comparison Mode
 
 /// Defines which aspect of travel data to compare
-enum ComparisonMode {
+enum ComparisonMode: Equatable {
     case visited      // Compare countries marked as visited
     case wishlist     // Compare countries marked as want-to-visit
 }
@@ -18,7 +18,7 @@ enum ComparisonMode {
 // MARK: - Comparison Result
 
 /// Represents the result of comparing two users' travel data
-struct TravelComparisonResult {
+struct TravelComparisonResult: Equatable {
     /// Countries that only you have (visited or wishlisted)
     let yours: Set<String>
     
