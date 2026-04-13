@@ -27,6 +27,12 @@ struct RootTabView: View {
                 .tabItem {
                     Label("Stats", systemImage: "chart.bar")
                 }
+            
+            // Travel Comparison (NEW!)
+            ComparisonView()
+                .tabItem {
+                    Label("Compare", systemImage: "person.2.fill")
+                }
 
             Group {
                 if authService.isSignedIn {
