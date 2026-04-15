@@ -34,4 +34,13 @@ struct UserProfile: Codable, Identifiable, Equatable {
         self.createdAt = now
         self.updatedAt = now
     }
+    
+    /// Internal initializer for recreating profiles from Firestore with all fields
+    init(userId: String, email: String, allowComparison: Bool, createdAt: Date, updatedAt: Date) {
+        self.id = userId
+        self.email = email
+        self.allowComparison = allowComparison
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
 }

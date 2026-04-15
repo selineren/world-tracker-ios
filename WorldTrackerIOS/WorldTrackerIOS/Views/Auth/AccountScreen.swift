@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 struct AccountScreen: View {
     @EnvironmentObject private var authService: AuthService
@@ -15,6 +16,16 @@ struct AccountScreen: View {
     @State private var countries: [Country] = []
     @State private var showingChangePassword = false
     @State private var showingDeleteAccount = false
+    
+    // MARK: - Profile Privacy State
+    
+    @State private var userProfile: UserProfile?
+    @State private var isLoadingProfile = true
+    @State private var allowComparison = false
+    @State private var isSavingComparison = false
+    @State private var pendingComparisonValue: Bool?
+    
+    private let profileRepository = FirestoreUserRepository()
     
     // MARK: - Computed Properties for Travel Stats
     
@@ -113,6 +124,132 @@ struct AccountScreen: View {
         
         let index = hash % colors.count
         return colors[index]
+    }
+    
+    // MARK: - Profile Management
+    
+    /// Load the current user's profile from Firestore
+    private func loadProfile() async {
+        isLoadingProfile = true
+        defer { isLoadingProfile = false }
+        
+        do {
+            userProfile = try await profileRepository.getCurrentUserProfile()
+            allowComparison = userProfile?.allowComparison ?? false
+            
+            #if DEBUG
+            if let profile = userProfile {
+                print("✅ Loaded profile: allowComparison = \(profile.allowComparison)")
+            } else {
+                print("ℹ️ No profile exists yet")
+            }
+            #endif
+        } catch {
+            // Fail silently - profile is optional, don't break AccountScreen
+            #if DEBUG
+            print("⚠️ Failed to load profile: \(error.localizedDescription)")
+            #endif
+            userProfile = nil
+            allowComparison = false
+        }
+    }
+    
+    /// Update or create the comparison setting
+    /// If profile doesn't exist, create it first
+    private func updateComparisonSetting(_ newValue: Bool) async {
+        await MainActor.run {
+            isSavingComparison = true
+        }
+        
+        // Create a timeout task
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
+            await MainActor.run {
+                if isSavingComparison {
+                    pendingComparisonValue = nil
+                    errorMessage = "Request timed out. Please check your connection and try again."
+                    isSavingComparison = false
+                    
+                    #if DEBUG
+                    print("⏱️ Save operation timed out after 10 seconds")
+                    #endif
+                }
+            }
+        }
+        
+        do {
+            if let existingProfile = userProfile {
+                // Profile exists - just update the setting
+                try await profileRepository.updateComparisonSetting(allowComparison: newValue)
+                
+                // Cancel timeout and update local state on success
+                timeoutTask.cancel()
+                await MainActor.run {
+                    var updatedProfile = existingProfile
+                    updatedProfile.allowComparison = newValue
+                    updatedProfile.updatedAt = Date()
+                    userProfile = updatedProfile
+                    allowComparison = newValue
+                    pendingComparisonValue = nil
+                    
+                    // Clear any previous error
+                    errorMessage = nil
+                    isSavingComparison = false
+                }
+                
+                #if DEBUG
+                print("✅ Updated allowComparison to \(newValue)")
+                #endif
+            } else {
+                // Profile doesn't exist - create it
+                guard let user = authService.user else {
+                    timeoutTask.cancel()
+                    await MainActor.run {
+                        pendingComparisonValue = nil
+                        isSavingComparison = false
+                        errorMessage = "User not authenticated"
+                    }
+                    return
+                }
+                
+                let newProfile = UserProfile(
+                    userId: user.uid,
+                    email: authService.userEmail,
+                    allowComparison: newValue
+                )
+                
+                try await profileRepository.createOrUpdateProfile(newProfile)
+                
+                // Cancel timeout and update local state on success
+                timeoutTask.cancel()
+                await MainActor.run {
+                    userProfile = newProfile
+                    allowComparison = newValue
+                    pendingComparisonValue = nil
+                    
+                    // Clear any previous error
+                    errorMessage = nil
+                    isSavingComparison = false
+                }
+                
+                #if DEBUG
+                print("✅ Created new profile with allowComparison = \(newValue)")
+                #endif
+            }
+        } catch {
+            // Cancel timeout and revert to previous state on error
+            timeoutTask.cancel()
+            await MainActor.run {
+                pendingComparisonValue = nil
+                errorMessage = "Failed to update privacy setting: \(error.localizedDescription)"
+                isSavingComparison = false
+            }
+            
+            #if DEBUG
+            print("❌ Failed to update comparison setting: \(error.localizedDescription)")
+            print("   Reverted to previous value: \(allowComparison)")
+            #endif
+        }
     }
 
     var body: some View {
@@ -270,6 +407,60 @@ struct AccountScreen: View {
                 } header: {
                     Text("Travel Highlights")
                 }
+                
+                // MARK: - Privacy Section
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { 
+                            // Show pending value if one exists, otherwise current value
+                            pendingComparisonValue ?? allowComparison 
+                        },
+                        set: { newValue in
+                            // Don't allow changes while saving
+                            guard !isSavingComparison else { return }
+                            
+                            // Set pending value for immediate UI feedback
+                            pendingComparisonValue = newValue
+                            
+                            // Save to Firestore asynchronously
+                            Task {
+                                await updateComparisonSetting(newValue)
+                            }
+                        }
+                    )) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.2.fill")
+                                .font(.title2)
+                                .foregroundStyle(.purple)
+                                .frame(width: 32)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Allow Travel Comparison")
+                                    .font(.headline)
+                                
+                                if isLoadingProfile {
+                                    Text("Loading...")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                } else if isSavingComparison {
+                                    Text("Saving...")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text(allowComparison ? "Others can compare with you" : "Your travel data is private")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .disabled(isLoadingProfile || isSavingComparison)
+                } header: {
+                    Text("Privacy")
+                } footer: {
+                    Text("When enabled, friends can compare their travel history with yours. Your travel data remains private when disabled.")
+                }
 
                 // MARK: - Settings Section
                 Section {
@@ -351,6 +542,9 @@ struct AccountScreen: View {
                 let loadedCountries = CountryDataService.shared.loadCountries()
                 countries = loadedCountries
                 totalCountries = loadedCountries.count
+                
+                // Load user profile for privacy settings
+                await loadProfile()
             }
         }
     }
