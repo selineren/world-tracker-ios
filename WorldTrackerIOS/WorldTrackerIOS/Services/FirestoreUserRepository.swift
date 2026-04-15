@@ -112,10 +112,13 @@ final class FirestoreUserRepository {
             updatedAt = Date()
         }
         
-        var profile = UserProfile(userId: userId, email: email, allowComparison: allowComparison)
-        profile.updatedAt = updatedAt
-        
-        return profile
+        return UserProfile(
+            userId: userId,
+            email: email,
+            allowComparison: allowComparison,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
     }
     
     // MARK: - Async Wrappers
