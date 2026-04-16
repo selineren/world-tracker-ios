@@ -25,6 +25,12 @@ struct AccountScreen: View {
     @State private var isSavingComparison = false
     @State private var pendingComparisonValue: Bool?
     
+    // MARK: - Email Lookup Testing
+    
+    @State private var testEmail = ""
+    @State private var lookupResult: String?
+    @State private var isLookingUp = false
+    
     private let profileRepository = FirestoreUserRepository()
     
     // MARK: - Computed Properties for Travel Stats
@@ -251,6 +257,48 @@ struct AccountScreen: View {
             #endif
         }
     }
+    
+    // MARK: - Email Lookup Testing
+    
+    /// Test function to lookup a user by email
+    private func testEmailLookup() async {
+        await MainActor.run {
+            isLookingUp = true
+            lookupResult = nil
+        }
+        
+        do {
+            let profile = try await profileRepository.findProfileByEmail(testEmail)
+            
+            await MainActor.run {
+                if let profile {
+                    lookupResult = "✅ Found: \(profile.email)\nUser ID: \(profile.id)\nComparison allowed: \(profile.allowComparison)"
+                    
+                    #if DEBUG
+                    print("✅ Lookup successful: \(profile.email)")
+                    print("   User ID: \(profile.id)")
+                    print("   Allow comparison: \(profile.allowComparison)")
+                    #endif
+                } else {
+                    lookupResult = "❌ No user found with email '\(testEmail)' or they have disabled comparison"
+                    
+                    #if DEBUG
+                    print("❌ No profile found for: \(testEmail)")
+                    #endif
+                }
+                isLookingUp = false
+            }
+        } catch {
+            await MainActor.run {
+                lookupResult = "❌ Error: \(error.localizedDescription)"
+                isLookingUp = false
+                
+                #if DEBUG
+                print("❌ Lookup error: \(error.localizedDescription)")
+                #endif
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -461,6 +509,51 @@ struct AccountScreen: View {
                 } footer: {
                     Text("When enabled, friends can compare their travel history with yours. Your travel data remains private when disabled.")
                 }
+                
+                // MARK: - Email Lookup Test Section (DEBUG ONLY)
+                #if DEBUG
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Test Email Lookup")
+                            .font(.headline)
+                        
+                        TextField("Enter email to lookup", text: $testEmail)
+                            .textFieldStyle(.roundedBorder)
+                            .autocapitalization(.none)
+                            .keyboardType(.emailAddress)
+                            .disabled(isLookingUp)
+                        
+                        Button {
+                            Task {
+                                await testEmailLookup()
+                            }
+                        } label: {
+                            HStack {
+                                if isLookingUp {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
+                                Text(isLookingUp ? "Searching..." : "Lookup User")
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(testEmail.isEmpty || isLookingUp)
+                        
+                        if let result = lookupResult {
+                            Text(result)
+                                .font(.caption)
+                                .foregroundStyle(result.hasPrefix("✅") ? .green : .red)
+                                .padding(.top, 4)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                } header: {
+                    Text("Developer Tools")
+                } footer: {
+                    Text("This section is only visible in DEBUG builds. Test the email lookup functionality here.")
+                }
+                #endif
 
                 // MARK: - Settings Section
                 Section {
