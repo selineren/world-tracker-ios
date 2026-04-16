@@ -38,6 +38,27 @@ final class FirestoreVisitRepository {
             try mapVisit(countryId: document.documentID, data: document.data())
         }
     }
+    
+    /// Fetch all visits for a specific user (read-only)
+    /// Used for travel comparison - can only read users who have allowComparison enabled
+    /// - Parameter userId: The Firebase Auth user ID to fetch visits for
+    /// - Returns: Array of Visit objects for the specified user
+    /// - Throws: FirestoreVisitRepositoryError if the fetch fails
+    /// - Note: This is a read-only operation. No write access to other users' data is possible.
+    func allVisits(forUserId userId: String) async throws -> [Visit] {
+        // Ensure we're authenticated (even though we're reading someone else's data)
+        _ = try requireUserID()
+        
+        let snapshot = try await getDocuments(
+            from: db.collection("users")
+                .document(userId)
+                .collection("visits")
+        )
+
+        return try snapshot.documents.map { document in
+            try mapVisit(countryId: document.documentID, data: document.data())
+        }
+    }
 
     func setVisited(_ countryId: String, isVisited: Bool, visitedDate: Date?, notes: String, wantToVisit: Bool = false) async throws {
         let userID = try requireUserID()
