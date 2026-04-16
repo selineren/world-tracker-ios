@@ -24,142 +24,235 @@ struct ComparisonView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // User Lookup Section
-                userLookupSection
-                    .padding(.horizontal)
-                    .padding(.top)
-                
-                // Display Mode Picker (List vs Map)
-                Picker("Display Mode", selection: $displayMode) {
-                    Text("List").tag(DisplayMode.list)
-                    Text("Map").tag(DisplayMode.map)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.top, 8)
-                
-                // Mode Picker (Visited vs Wishlist)
-                Picker("Comparison Mode", selection: $viewModel.selectedMode) {
-                    Text("Visited").tag(ComparisonMode.visited)
-                    Text("Wishlist").tag(ComparisonMode.wishlist)
-                }
-                .pickerStyle(.segmented)
-                .padding()
-                
-                // Content based on display mode
-                if displayMode == .list {
-                    listView
-                } else {
-                    mapView
+            Group {
+                switch viewModel.state {
+                case .idle:
+                    searchView
+                case .loading:
+                    loadingView
+                case .loaded:
+                    resultsView
+                case .error(let message):
+                    errorView(message: message)
                 }
             }
             .navigationTitle("Travel Comparison")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        viewModel.regenerateMockData()
-                        viewModel.loadComparison(yourVisits: appState.visits)
-                    } label: {
-                        Label("Regenerate Mock Data", systemImage: "arrow.clockwise")
-                    }
-                }
-            }
             .onAppear {
                 // Check if user has changed (sign out / sign in / account switch)
                 let currentUserId = authService.user?.uid
                 
                 if lastUserId != currentUserId {
-                    // User changed - reset everything
+                    // User changed - reset to idle state
                     lastUserId = currentUserId
-                    viewModel.resetState(yourVisits: appState.visits)
-                } else {
-                    // Same user - just reload comparison with current data
-                    viewModel.loadComparison(yourVisits: appState.visits)
+                    viewModel.resetToIdle()
                 }
             }
             .onChange(of: appState.visits) { _, newVisits in
-                viewModel.loadComparison(yourVisits: newVisits)
-            }
-            .onChange(of: viewModel.selectedMode) { _, _ in
-                viewModel.loadComparison(yourVisits: appState.visits)
+                // Only reload if we have a comparison loaded
+                if case .loaded = viewModel.state {
+                    viewModel.reloadComparison(yourVisits: newVisits)
+                }
             }
         }
     }
     
-    // MARK: - User Lookup Section
+    // MARK: - State Views
     
-    private var userLookupSection: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 12) {
-                TextField("Enter email to compare", text: $viewModel.emailToCompare)
-                    .textFieldStyle(.roundedBorder)
-                    .autocapitalization(.none)
-                    .keyboardType(.emailAddress)
-                    .disabled(viewModel.isLoadingUser)
-                    .onChange(of: viewModel.emailToCompare) { oldValue, newValue in
-                        // Clear comparison when email text changes
-                        // Only clear if we have a compared user and the new value differs from their email
-                        if let comparedProfile = viewModel.comparedUserProfile,
-                           newValue.lowercased().trimmingCharacters(in: .whitespaces) != comparedProfile.email.lowercased() {
-                            viewModel.clearComparison(yourVisits: appState.visits)
+    /// Initial state: Search for a user to compare with
+    private var searchView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            // Icon and title
+            VStack(spacing: 16) {
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(.blue)
+                
+                Text("Compare Travel Experiences")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text("Enter a friend's email to see how your travels compare")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            .padding(.bottom, 32)
+            
+            // Search field
+            VStack(spacing: 16) {
+                HStack(spacing: 12) {
+                    Image(systemName: "envelope.fill")
+                        .foregroundStyle(.secondary)
+                    
+                    TextField("friend@example.com", text: $viewModel.emailToCompare)
+                        .textFieldStyle(.plain)
+                        .autocapitalization(.none)
+                        .keyboardType(.emailAddress)
+                        .submitLabel(.search)
+                        .onSubmit {
+                            Task {
+                                await viewModel.searchUser(yourVisits: appState.visits)
+                            }
                         }
-                    }
+                }
+                .padding()
+                .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
                 
                 Button {
                     Task {
-                        await viewModel.fetchUserByEmail(yourVisits: appState.visits)
+                        await viewModel.searchUser(yourVisits: appState.visits)
                     }
                 } label: {
-                    if viewModel.isLoadingUser {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: "magnifyingglass")
-                    }
+                    Text("Compare")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(viewModel.emailToCompare.isEmpty || viewModel.isLoadingUser)
+                .disabled(viewModel.emailToCompare.isEmpty)
             }
+            .padding(.horizontal, 32)
             
-            // Status message
+            Spacer()
+            
+            // Privacy note
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.fill")
+                        .font(.caption)
+                    Text("Privacy Protected")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(.secondary)
+                
+                Text("You can only compare with users who have enabled comparison in their account settings")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            .padding(.bottom, 32)
+        }
+    }
+    
+    /// Loading state: Fetching user data
+    private var loadingView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            ProgressView()
+                .scaleEffect(1.5)
+            
+            Text("Loading comparison...")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+                .padding(.top)
+            
+            Spacer()
+        }
+    }
+    
+    /// Error state: Something went wrong
+    private func errorView(message: String) -> some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.red)
+            
+            Text("Unable to Compare")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            Text(message)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            
+            Button {
+                viewModel.resetToIdle()
+            } label: {
+                Text("Try Again")
+                    .font(.headline)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.top)
+            
+            Spacer()
+        }
+    }
+    
+    /// Loaded state: Show comparison results
+    private var resultsView: some View {
+        VStack(spacing: 0) {
+            // Compared user info bar
             if let profile = viewModel.comparedUserProfile {
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("Comparing with: \(profile.email)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-            } else if viewModel.useMockData {
-                HStack {
-                    Image(systemName: "person.crop.circle.badge.questionmark")
-                        .foregroundStyle(.orange)
-                    Text("Using mock data")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
+                comparedUserInfoBar(profile: profile)
             }
             
-            // Error message
-            if let error = viewModel.loadError {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                    Spacer()
-                }
+            // Display Mode Picker (List vs Map)
+            Picker("Display Mode", selection: $displayMode) {
+                Text("List").tag(DisplayMode.list)
+                Text("Map").tag(DisplayMode.map)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.top, 8)
+            
+            // Mode Picker (Visited vs Wishlist)
+            Picker("Comparison Mode", selection: $viewModel.selectedMode) {
+                Text("Visited").tag(ComparisonMode.visited)
+                Text("Wishlist").tag(ComparisonMode.wishlist)
+            }
+            .pickerStyle(.segmented)
+            .padding()
+            
+            // Content based on display mode
+            if displayMode == .list {
+                listView
+            } else {
+                mapView
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
+    }
+    
+    /// Info bar showing who we're comparing with
+    private func comparedUserInfoBar(profile: UserProfile) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Comparing with")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(profile.email)
+                    .font(.caption)
+                    .fontWeight(.medium)
+            }
+            
+            Spacer()
+            
+            Button {
+                viewModel.resetToIdle()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
     
     // MARK: - List View
@@ -410,18 +503,25 @@ enum ComparisonBadge {
 
 @MainActor
 final class ComparisonViewModel: ObservableObject {
+    // MARK: - State Management
+    
+    enum ViewState: Equatable {
+        case idle                    // Initial state - show search UI
+        case loading                 // Fetching user data
+        case loaded                  // Comparison data loaded successfully
+        case error(String)          // Error occurred
+    }
+    
+    @Published var state: ViewState = .idle
     @Published var selectedMode: ComparisonMode = .visited
+    @Published var emailToCompare: String = ""
+    @Published private(set) var comparedUserProfile: UserProfile?
+    
+    // Comparison results (only populated in .loaded state)
     @Published private(set) var visitedComparison: TravelComparisonResult
     @Published private(set) var wishlistComparison: TravelComparisonResult
-    @Published private(set) var mockFriendVisits: [String: Visit]
     
-    // User lookup and fetching state
-    @Published var emailToCompare: String = ""
-    @Published var isLoadingUser = false
-    @Published var loadError: String?
-    @Published private(set) var comparedUserProfile: UserProfile?
-    @Published private(set) var useMockData = true // Start with mock data
-    
+    // Services and data
     private let countryService = CountryDataService.shared
     private let profileRepository = FirestoreUserRepository()
     private let visitRepository = FirestoreVisitRepository()
@@ -462,51 +562,53 @@ final class ComparisonViewModel: ObservableObject {
         
         // Load countries
         self.allCountries = countryService.loadCountries()
-        
-        // Generate initial mock data
-        self.mockFriendVisits = Self.generateMockFriendVisits(allCountries: allCountries)
     }
     
-    func loadComparison(yourVisits: [String: Visit]) {
-        let theirVisits = useMockData ? mockFriendVisits : mockFriendVisits
-        
-        // Perform comparison for visited countries
-        visitedComparison = TravelComparisonEngine.compare(
-            yourVisits: yourVisits,
-            theirVisits: theirVisits,
-            mode: .visited
-        )
-        
-        // Perform comparison for wishlist countries
-        wishlistComparison = TravelComparisonEngine.compare(
-            yourVisits: yourVisits,
-            theirVisits: theirVisits,
-            mode: .wishlist
-        )
-    }
+    // MARK: - Public Methods
     
-    func regenerateMockData() {
-        mockFriendVisits = Self.generateMockFriendVisits(allCountries: allCountries)
-        useMockData = true
-        comparedUserProfile = nil
-        // Trigger re-comparison (will be done by onChange handler)
-        objectWillChange.send()
-    }
-    
-    /// Fetch a real user's profile and visits by email
-    func fetchUserByEmail(yourVisits: [String: Visit]) async {
-        await MainActor.run {
-            isLoadingUser = true
-            loadError = nil
+    /// Search for a user by email and load their comparison data
+    func searchUser(yourVisits: [String: Visit]) async {
+        state = .loading
+        
+        // Create a timeout task (8 seconds like in AccountScreen)
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 8_000_000_000) // 8 seconds
+            if case .loading = state {
+                state = .error("Request timed out. Please check your internet connection and try again.")
+                
+                #if DEBUG
+                print("⏱️ Search operation timed out after 8 seconds")
+                #endif
+            }
+        }
+        
+        defer {
+            timeoutTask.cancel()
         }
         
         do {
             // Step 1: Find the profile by email
-            guard let profile = try await profileRepository.findProfileByEmail(emailToCompare) else {
-                await MainActor.run {
-                    loadError = "User not found or they have disabled comparison"
-                    isLoadingUser = false
-                }
+            let profile: UserProfile?
+            do {
+                profile = try await profileRepository.findProfileByEmail(emailToCompare)
+            } catch {
+                // Cancel timeout before handling error
+                timeoutTask.cancel()
+                
+                // Network error occurred during profile lookup
+                let errorMessage = userFriendlyErrorMessage(from: error)
+                state = .error(errorMessage)
+                
+                #if DEBUG
+                print("❌ Network error during profile lookup: \(error)")
+                #endif
+                return
+            }
+            
+            // Check if profile was found
+            guard let profile else {
+                timeoutTask.cancel()
+                state = .error("User not found or they have disabled comparison in their privacy settings")
                 return
             }
             
@@ -524,109 +626,139 @@ final class ComparisonViewModel: ObservableObject {
             // Step 3: Convert to dictionary for comparison engine
             let theirVisitsDict = Dictionary(uniqueKeysWithValues: theirVisitsArray.map { ($0.countryId, $0) })
             
-            // Step 4: Update state and perform comparison
-            await MainActor.run {
-                mockFriendVisits = theirVisitsDict
-                comparedUserProfile = profile
-                useMockData = false
-                isLoadingUser = false
-                
-                // Perform comparison
-                loadComparison(yourVisits: yourVisits)
-            }
+            // Step 4: Perform comparisons
+            visitedComparison = TravelComparisonEngine.compare(
+                yourVisits: yourVisits,
+                theirVisits: theirVisitsDict,
+                mode: .visited
+            )
+            
+            wishlistComparison = TravelComparisonEngine.compare(
+                yourVisits: yourVisits,
+                theirVisits: theirVisitsDict,
+                mode: .wishlist
+            )
+            
+            // Step 5: Update state
+            comparedUserProfile = profile
+            state = .loaded
+            
+            // Cancel timeout on success
+            timeoutTask.cancel()
             
         } catch {
-            await MainActor.run {
-                loadError = "Failed to load user: \(error.localizedDescription)"
-                isLoadingUser = false
+            // Cancel timeout before handling error
+            timeoutTask.cancel()
+            
+            // Detect and handle network errors specifically
+            let errorMessage = userFriendlyErrorMessage(from: error)
+            state = .error(errorMessage)
+            
+            #if DEBUG
+            print("❌ Failed to fetch visits: \(error)")
+            #endif
+        }
+    }
+    
+    /// Reload the comparison with updated visit data (called when user's visits change)
+    func reloadComparison(yourVisits: [String: Visit]) {
+        guard case .loaded = state, let profile = comparedUserProfile else { return }
+        
+        // Re-fetch the other user's visits and re-compare
+        Task {
+            do {
+                let theirVisitsArray = try await visitRepository.allVisits(forUserId: profile.id)
+                let theirVisitsDict = Dictionary(uniqueKeysWithValues: theirVisitsArray.map { ($0.countryId, $0) })
+                
+                // Perform comparisons
+                visitedComparison = TravelComparisonEngine.compare(
+                    yourVisits: yourVisits,
+                    theirVisits: theirVisitsDict,
+                    mode: .visited
+                )
+                
+                wishlistComparison = TravelComparisonEngine.compare(
+                    yourVisits: yourVisits,
+                    theirVisits: theirVisitsDict,
+                    mode: .wishlist
+                )
                 
                 #if DEBUG
-                print("❌ Failed to fetch user: \(error)")
+                print("✅ Reloaded comparison with updated data")
                 #endif
+                
+            } catch {
+                #if DEBUG
+                print("⚠️ Failed to reload comparison: \(error)")
+                #endif
+                // Don't change state - keep showing old data
             }
         }
     }
     
-    /// Clear the current comparison and revert to mock data
-    /// Called when the user modifies the email text field
-    func clearComparison(yourVisits: [String: Visit]) {
-        // Clear the compared user profile
-        comparedUserProfile = nil
-        loadError = nil
-        
-        // Revert to mock data
-        useMockData = true
-        
-        // Regenerate fresh mock data
-        mockFriendVisits = Self.generateMockFriendVisits(allCountries: allCountries)
-        
-        // Reload comparison with mock data
-        loadComparison(yourVisits: yourVisits)
-    }
-    
-    /// Reset all comparison state (used when view appears or user signs out)
-    func resetState(yourVisits: [String: Visit]) {
-        // Clear email input
+    /// Reset to idle state (ready to search for a new user)
+    func resetToIdle() {
+        state = .idle
         emailToCompare = ""
-        
-        // Clear comparison state
         comparedUserProfile = nil
-        loadError = nil
-        isLoadingUser = false
         
-        // Revert to mock data
-        useMockData = true
-        
-        // Regenerate fresh mock data
-        mockFriendVisits = Self.generateMockFriendVisits(allCountries: allCountries)
-        
-        // Reload comparison with mock data
-        loadComparison(yourVisits: yourVisits)
+        // Clear comparison data
+        visitedComparison = TravelComparisonResult(
+            yours: [],
+            shared: [],
+            theirs: [],
+            mode: .visited
+        )
+        wishlistComparison = TravelComparisonResult(
+            yours: [],
+            shared: [],
+            theirs: [],
+            mode: .wishlist
+        )
     }
     
-    // MARK: - Mock Data Generation
+    // MARK: - Error Handling
     
-    static func generateMockFriendVisits(allCountries: [Country]) -> [String: Visit] {
-        // Pick 10-15 random countries for friend's visited list
-        let visitedCount = Int.random(in: 10...15)
-        let visitedCountries = allCountries.shuffled().prefix(visitedCount)
+    /// Convert errors into user-friendly messages, detecting network issues
+    private func userFriendlyErrorMessage(from error: Error) -> String {
+        let nsError = error as NSError
         
-        // Pick 5-10 random countries for friend's wishlist (different from visited)
-        let remainingCountries = allCountries.filter { country in
-            !visitedCountries.contains(where: { $0.id == country.id })
-        }
-        let wishlistCount = Int.random(in: 5...10)
-        let wishlistCountries = remainingCountries.shuffled().prefix(wishlistCount)
-        
-        var mockVisits: [String: Visit] = [:]
-        
-        // Add visited countries
-        for country in visitedCountries {
-            mockVisits[country.id] = Visit(
-                countryId: country.id,
-                isVisited: true,
-                wantToVisit: false,
-                visitedDate: Date().addingTimeInterval(-Double.random(in: 0...31536000)), // Random date in last year
-                notes: "Mock visited country",
-                photos: [],
-                updatedAt: Date()
-            )
+        // Check for network-related error codes
+        // NSURLErrorDomain codes: https://developer.apple.com/documentation/foundation/nsurlerrordomain
+        if nsError.domain == NSURLErrorDomain {
+            switch nsError.code {
+            case NSURLErrorNotConnectedToInternet:
+                return "No internet connection. Please check your network and try again."
+            case NSURLErrorNetworkConnectionLost:
+                return "Network connection was lost. Please try again."
+            case NSURLErrorCannotConnectToHost, NSURLErrorCannotFindHost:
+                return "Unable to connect to server. Please check your internet connection."
+            case NSURLErrorTimedOut:
+                return "Connection timed out. Please try again."
+            case NSURLErrorDNSLookupFailed:
+                return "Network error: DNS lookup failed. Please check your connection."
+            default:
+                return "Network error. Please check your connection and try again."
+            }
         }
         
-        // Add wishlist countries
-        for country in wishlistCountries {
-            mockVisits[country.id] = Visit(
-                countryId: country.id,
-                isVisited: false,
-                wantToVisit: true,
-                visitedDate: nil,
-                notes: "Mock wishlist country",
-                photos: [],
-                updatedAt: Date()
-            )
+        // Check for Firebase-specific network errors
+        // Firebase Firestore error domain
+        if nsError.domain == "FIRFirestoreErrorDomain" {
+            switch nsError.code {
+            case 14: // UNAVAILABLE - network issue or server unavailable
+                return "Unable to connect to the server. Please check your internet connection and try again."
+            case 4: // DEADLINE_EXCEEDED - operation timeout
+                return "Request timed out. Please check your connection and try again."
+            case 7: // PERMISSION_DENIED
+                return "Permission denied. The user may have changed their privacy settings."
+            default:
+                break
+            }
         }
         
-        return mockVisits
+        // Default error message with original description
+        return "Failed to load user: \(error.localizedDescription)"
     }
     
     // MARK: - Helpers
