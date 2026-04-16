@@ -14,6 +14,41 @@ import FirebaseFirestore
 final class FirestoreUserRepository {
     private let db = Firestore.firestore()
     
+    // MARK: - Profile Lookup Operations
+    
+    /// Find a user profile by email address
+    /// Only returns profiles where allowComparison is true
+    /// - Parameter email: The email address to search for
+    /// - Returns: UserProfile if found and comparison is allowed, nil otherwise
+    /// - Throws: FirestoreUserRepositoryError if query fails
+    func findProfileByEmail(_ email: String) async throws -> UserProfile? {
+        // Normalize email to lowercase for case-insensitive search
+        let normalizedEmail = email.lowercased().trimmingCharacters(in: .whitespaces)
+        
+        // Query for profiles with this email
+        let query = db.collectionGroup("profile")
+            .whereField("email", isEqualTo: normalizedEmail)
+            .whereField("allowComparison", isEqualTo: true)
+            .limit(to: 1)
+        
+        let snapshot = try await executeQuery(query)
+        
+        guard let document = snapshot.documents.first,
+              let data = document.data() as? [String: Any] else {
+            return nil
+        }
+        
+        // Extract userId from document path: users/{userId}/profile/data
+        let pathComponents = document.reference.path.components(separatedBy: "/")
+        guard pathComponents.count >= 2,
+              pathComponents[0] == "users" else {
+            throw FirestoreUserRepositoryError.invalidProfileData
+        }
+        let userId = pathComponents[1]
+        
+        return try mapProfile(userId: userId, data: data)
+    }
+    
     // MARK: - Current User Profile Operations
     
     /// Create or update the current user's profile
@@ -27,8 +62,11 @@ final class FirestoreUserRepository {
             throw FirestoreUserRepositoryError.invalidProfileData
         }
         
+        // Normalize email to lowercase for case-insensitive lookup
+        let normalizedEmail = profile.email.lowercased().trimmingCharacters(in: .whitespaces)
+        
         let data: [String: Any] = [
-            "email": profile.email,
+            "email": normalizedEmail,
             "allowComparison": profile.allowComparison,
             "createdAt": Timestamp(date: profile.createdAt),
             "updatedAt": Timestamp(date: Date())
@@ -122,6 +160,24 @@ final class FirestoreUserRepository {
     }
     
     // MARK: - Async Wrappers
+    
+    private func executeQuery(_ query: Query) async throws -> QuerySnapshot {
+        try await withCheckedThrowingContinuation { continuation in
+            query.getDocuments { snapshot, error in
+                if let error {
+                    continuation.resume(throwing: FirestoreUserRepositoryError.unknown(error))
+                    return
+                }
+                
+                guard let snapshot else {
+                    continuation.resume(throwing: FirestoreUserRepositoryError.documentNotFound)
+                    return
+                }
+                
+                continuation.resume(returning: snapshot)
+            }
+        }
+    }
     
     private func getDocument(from ref: DocumentReference) async throws -> DocumentSnapshot {
         try await withCheckedThrowingContinuation { continuation in
