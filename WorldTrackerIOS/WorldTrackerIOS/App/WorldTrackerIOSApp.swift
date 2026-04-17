@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import FirebaseCore
+import FirebaseAuth
 
 @main
 struct WorldTrackerIOSApp: App {
@@ -60,7 +61,7 @@ struct WorldTrackerIOSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            AuthGatedRootView()
                 .environmentObject(appState)
                 .environmentObject(authService)
                 .task(id: authService.authState) {
@@ -85,3 +86,77 @@ struct WorldTrackerIOSApp: App {
         }
     }
 }
+// MARK: - Auth-Gated Root View
+
+/// Root view that conditionally shows authentication or main app content
+/// based on the user's sign-in status.
+struct AuthGatedRootView: View {
+    @EnvironmentObject private var authService: AuthService
+    
+    var body: some View {
+        Group {
+            switch authService.authState {
+            case .signedIn:
+                // User is authenticated - show main app
+                // Use stable ID that changes only when auth state changes to force recreation
+                RootTabView()
+                    .id("signed-in-\(authService.user?.uid ?? "unknown")")
+                    .transition(.opacity)
+                    .onAppear {
+                        #if DEBUG
+                        print("📱 Showing RootTabView (signed in)")
+                        #endif
+                    }
+                
+            case .signedOut:
+                // User is not authenticated - show auth screen
+                AuthScreen()
+                    .transition(.opacity)
+                    .onAppear {
+                        #if DEBUG
+                        print("📱 Showing AuthScreen (signed out)")
+                        #endif
+                    }
+                
+            case .unknown:
+                // Initial state - show loading screen while Firebase checks session
+                LoadingView()
+                    .transition(.opacity)
+                    .onAppear {
+                        #if DEBUG
+                        print("📱 Showing LoadingView (unknown state)")
+                        #endif
+                    }
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: authService.authState)
+    }
+}
+
+// MARK: - Loading View
+/// Displayed during initial app launch while Firebase checks authentication status
+private struct LoadingView: View {
+    var body: some View {
+        ZStack {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 24) {
+                // App Logo
+                AppLogoView()
+                
+                // App Name
+                Text("WorldTracker")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(.primary)
+                
+                // Loading Indicator
+                ProgressView()
+                    .scaleEffect(1.2)
+                    .padding(.top, 8)
+            }
+        }
+    }
+}
+
+

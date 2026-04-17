@@ -33,10 +33,11 @@ final class FirestoreUserRepository {
         
         let snapshot = try await executeQuery(query)
         
-        guard let document = snapshot.documents.first,
-              let data = document.data() as? [String: Any] else {
+        guard let document = snapshot.documents.first else {
             return nil
         }
+        
+        let data = document.data()
         
         // Extract userId from document path: users/{userId}/profile/data
         let pathComponents = document.reference.path.components(separatedBy: "/")
