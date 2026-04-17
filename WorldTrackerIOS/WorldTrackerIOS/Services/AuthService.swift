@@ -21,22 +21,59 @@ final class AuthService: ObservableObject {
     private var authStateHandle: AuthStateDidChangeListenerHandle?
 
     init() {
+        // Always start with unknown state for consistent UX
+        // This ensures LoadingView shows briefly on every cold launch
+        authState = .unknown
+        
+        #if DEBUG
+        print("🔐 AuthService init: state = .unknown")
+        #endif
+        
+        // Get current user synchronously
         user = Auth.auth().currentUser
-        authState = user != nil ? .signedIn : .signedOut
+        
+        // Schedule immediate state resolution
+        Task { @MainActor in
+            // Small delay to ensure LoadingView is visible
+            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms minimum
+            
+            if let currentUser = self.user {
+                // User exists - transition to signed in
+                self.authState = .signedIn
+                #if DEBUG
+                print("🔐 Auth state resolved: .signedIn (existing user: \(currentUser.uid))")
+                #endif
+            } else {
+                // No user yet - wait for Firebase callback or timeout
+                #if DEBUG
+                print("🔐 Auth state pending: waiting for Firebase callback...")
+                #endif
+                
+                // Timeout fallback if Firebase doesn't respond
+                try? await Task.sleep(nanoseconds: 400_000_000) // 400ms more (total 500ms)
+                if self.authState == .unknown && self.user == nil {
+                    self.authState = .signedOut
+                    #if DEBUG
+                    print("🔐 Auth state resolved: .signedOut (timeout)")
+                    #endif
+                }
+            }
+        }
 
         authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self else { return }
             
-            let previousUser = self.user
             self.user = user
             
-            // Detect actual state changes
-            if previousUser?.uid != user?.uid {
-                if user != nil {
-                    self.authState = .signedIn
-                } else {
-                    self.authState = .signedOut
-                }
+            // Always update state based on user presence
+            let newState: AuthState = user != nil ? .signedIn : .signedOut
+            
+            // Only update if state actually changed
+            if self.authState != newState {
+                self.authState = newState
+                #if DEBUG
+                print("🔐 Auth state changed: \(newState) (listener callback, uid: \(user?.uid ?? "none"))")
+                #endif
             }
         }
     }
@@ -132,9 +169,17 @@ final class AuthService: ObservableObject {
         // the sign-out flow automatically via authState change to .signedOut
     }
 }
-enum AuthState {
+enum AuthState: Equatable, CustomStringConvertible {
     case unknown
     case signedIn
     case signedOut
+    
+    var description: String {
+        switch self {
+        case .unknown: return ".unknown"
+        case .signedIn: return ".signedIn"
+        case .signedOut: return ".signedOut"
+        }
+    }
 }
 

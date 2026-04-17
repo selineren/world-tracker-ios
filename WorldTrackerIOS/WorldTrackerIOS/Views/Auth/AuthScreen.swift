@@ -268,7 +268,7 @@ struct AuthScreen: View {
 // MARK: - App Logo View
 
 /// Displays the app logo with a fallback to a globe icon
-private struct AppLogoView: View {
+struct AppLogoView: View {
     var body: some View {
         // Try to load the logo from Assets
         // If "AppLogo" asset doesn't exist, show gradient globe fallback
