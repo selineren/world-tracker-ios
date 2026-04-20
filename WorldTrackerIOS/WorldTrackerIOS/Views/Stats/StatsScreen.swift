@@ -393,54 +393,70 @@ struct StatsScreen: View {
                     // MARK: - Visited by Continent
                     Section {
                         ForEach(visitedByContinent, id: \.continent.id) { item in
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
+                            let accent = continentAccent(for: item.continent)
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack(alignment: .firstTextBaseline) {
                                     Text(item.continent.displayName)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                    
+                                        .font(AppTypography.labelSemiBold)
+                                        .foregroundStyle(Color.appInk)
+
                                     Spacer()
-                                    
+
                                     Text("\(item.visited) / \(item.total)")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Text("(\(item.percentage, specifier: "%.0f")%)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .font(AppTypography.bodySmall)
+                                        .foregroundStyle(Color.appInk3)
+
+                                    Text("· \(Int(item.percentage))%")
+                                        .font(AppTypography.bodySmall)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(accent)
                                 }
-                                
-                                // Progress bar for continent
+
                                 GeometryReader { geometry in
                                     ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 3)
-                                            .fill(Color.gray.opacity(0.15))
-                                            .frame(height: 6)
-                                        
-                                        RoundedRectangle(cornerRadius: 3)
-                                            .fill(continentColor(for: item.percentage))
-                                            .frame(width: geometry.size.width * (item.percentage / 100), height: 6)
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .fill(accent.opacity(0.14))
+                                            .frame(height: 10)
+
+                                        if item.percentage > 0 {
+                                            RoundedRectangle(cornerRadius: 5)
+                                                .fill(
+                                                    LinearGradient(
+                                                        colors: [accent.opacity(0.55), accent],
+                                                        startPoint: .leading,
+                                                        endPoint: .trailing
+                                                    )
+                                                )
+                                                .frame(
+                                                    width: geometry.size.width * (item.percentage / 100),
+                                                    height: 10
+                                                )
+                                        }
                                     }
                                 }
-                                .frame(height: 6)
-                                
-                                // Wishlist count
+                                .frame(height: 10)
+
                                 if item.wantToVisit > 0 {
                                     HStack(spacing: 4) {
                                         Image(systemName: "star.fill")
                                             .font(.caption2)
-                                            .foregroundStyle(.orange)
+                                            .foregroundStyle(Color.appSunset)
                                         Text("\(item.wantToVisit) on wishlist")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
+                                            .font(AppTypography.caption)
+                                            .foregroundStyle(Color.appInk3)
                                     }
-                                    .padding(.top, 2)
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(14)
+                            .background(accent.opacity(0.13))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .listRowBackground(Color.appPaper)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
                         }
                     } header: {
                         Text("Progress by Continent")
+                            .foregroundStyle(Color.appInk3)
                     }
                     
                     // MARK: - Recent Visits
@@ -512,6 +528,18 @@ struct StatsScreen: View {
             return .orange
         default:
             return .red
+        }
+    }
+
+    private func continentAccent(for continent: Continent) -> Color {
+        switch continent {
+        case .africa:       return .appSunset
+        case .antarctica:   return .appSky
+        case .asia:         return .appRose
+        case .europe:       return .appSky
+        case .northAmerica: return .appLime
+        case .oceania:      return .appSunset
+        case .southAmerica: return .appRose
         }
     }
     
