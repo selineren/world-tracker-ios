@@ -98,9 +98,10 @@ struct AuthGatedRootView: View {
             switch authService.authState {
             case .signedIn:
                 // User is authenticated - show main app
-                // Use stable ID that changes only when auth state changes to force recreation
+                // Use signInCounter to force recreation on each sign-in
+                // This ensures tab selection is reset to Map every time
                 RootTabView()
-                    .id("signed-in-\(authService.user?.uid ?? "unknown")")
+                    .id("signed-in-\(authService.signInCounter)")
                     .transition(.opacity)
                     .onAppear {
                         #if DEBUG

@@ -13,6 +13,10 @@ import FirebaseAuth
 final class AuthService: ObservableObject {
     @Published private(set) var user: User?
     @Published private(set) var authState: AuthState = .unknown
+    
+    /// Increments every time a user signs in
+    /// Used to force UI refresh and reset navigation state
+    @Published private(set) var signInCounter: Int = 0
 
     var userEmail: String {
         user?.email ?? "Unknown user"
@@ -31,6 +35,14 @@ final class AuthService: ObservableObject {
         
         // Get current user synchronously
         user = Auth.auth().currentUser
+        
+        // If user exists on init, increment counter (app launch while already signed in)
+        if user != nil {
+            signInCounter = 1
+            #if DEBUG
+            print("🔐 User already signed in on init - counter set to \(signInCounter)")
+            #endif
+        }
         
         // Schedule immediate state resolution
         Task { @MainActor in
@@ -63,10 +75,19 @@ final class AuthService: ObservableObject {
         authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self else { return }
             
+            let wasSignedOut = self.user == nil
             self.user = user
             
             // Always update state based on user presence
             let newState: AuthState = user != nil ? .signedIn : .signedOut
+            
+            // Increment counter when transitioning from signed out to signed in
+            if wasSignedOut && newState == .signedIn {
+                self.signInCounter += 1
+                #if DEBUG
+                print("🔐 Sign-in detected - counter incremented to \(self.signInCounter)")
+                #endif
+            }
             
             // Only update if state actually changed
             if self.authState != newState {

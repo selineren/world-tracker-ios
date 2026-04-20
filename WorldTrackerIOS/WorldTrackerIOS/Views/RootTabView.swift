@@ -6,12 +6,13 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 struct RootTabView: View {
     @EnvironmentObject private var authService: AuthService
     @EnvironmentObject private var appState: AppState
     
-    // Track selected tab - always start on Map tab
+    // Track selected tab - always starts on Map when view is created
     @State private var selectedTab: Tab = .map
     
     enum Tab {
@@ -64,11 +65,8 @@ struct RootTabView: View {
             UITabBar.appearance().standardAppearance = appearance
             UITabBar.appearance().scrollEdgeAppearance = appearance
             
-            // CRITICAL: Reset to Map tab when view appears
-            selectedTab = .map
-            
             #if DEBUG
-            print("🗺️ RootTabView appeared - resetting to Map tab")
+            print("🗺️ RootTabView appeared with signInCounter=\(authService.signInCounter), selectedTab=\(selectedTab)")
             #endif
         }
         .task {
