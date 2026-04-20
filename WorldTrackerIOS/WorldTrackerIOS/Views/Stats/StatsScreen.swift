@@ -41,6 +41,14 @@ struct StatsScreen: View {
     private var wantToVisitCount: Int {
         wantToVisitVisits.count
     }
+
+    private var totalPhotosCount: Int {
+        visitedVisits.reduce(0) { $0 + $1.photos.count }
+    }
+
+    private var currentYear: Int {
+        Calendar.current.component(.year, from: Date())
+    }
     
     private var visitedPercentage: Double {
         guard totalCountriesCount > 0 else { return 0 }
@@ -214,27 +222,31 @@ struct StatsScreen: View {
                         .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 12, trailing: 20))
                     }
                     
-                    // MARK: - Quick Stats
+                    // MARK: - Mini Stats
                     Section {
-                        HStack(spacing: 8) {
-                            QuickStatCard(
-                                icon: "calendar",
+                        HStack(spacing: 10) {
+                            MiniStatCard(
                                 value: "\(visitedThisYear.count)",
-                                label: "Visited This Year",
-                                color: .orange
+                                label: "in \(currentYear)",
+                                background: Color.appLime,
+                                foreground: Color.appInk
                             )
-                            
-                            QuickStatCard(
-                                icon: "star.fill",
+                            MiniStatCard(
                                 value: "\(wantToVisitCount)",
-                                label: "Countries Wishlist",
-                                color: .orange
+                                label: "on wishlist",
+                                background: Color.appAqua,
+                                foreground: Color.appInk
                             )
-                            
+                            MiniStatCard(
+                                value: "\(totalPhotosCount)",
+                                label: "photos",
+                                background: Color.appSunset,
+                                foreground: .white
+                            )
                         }
-                        .padding(.vertical, 8)
-                    } header: {
-                        Text("Quick Stats")
+                        .listRowBackground(Color.appPaper)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 16, trailing: 20))
                     }
                     
                     // MARK: - Achievements
@@ -558,28 +570,27 @@ struct StatsScreen: View {
     
     // MARK: - Supporting Views
     
-    private struct QuickStatCard: View {
-        let icon: String
+    private struct MiniStatCard: View {
         let value: String
         let label: String
-        let color: Color
-        
+        let background: Color
+        let foreground: Color
+
         var body: some View {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(color)
-                
+            VStack(alignment: .leading, spacing: 6) {
                 Text(value)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                
+                    .font(AppTypography.statLarge)
+                    .foregroundStyle(foreground)
                 Text(label)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                    .font(AppTypography.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(foreground.opacity(0.75))
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(background)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .shadow(color: Color.appInk.opacity(0.06), radius: 8, x: 0, y: 3)
         }
     }
     
