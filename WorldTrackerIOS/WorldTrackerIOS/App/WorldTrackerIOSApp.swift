@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import FirebaseCore
 import FirebaseAuth
+import CoreText
 
 @main
 struct WorldTrackerIOSApp: App {
@@ -18,6 +19,7 @@ struct WorldTrackerIOSApp: App {
     @StateObject private var appState: AppState
 
     init() {
+        Self.registerFonts()
         FirebaseApp.configure()
 
         do {
@@ -56,6 +58,20 @@ struct WorldTrackerIOSApp: App {
                 print("❌ SwiftData error details: \(swiftDataError)")
             }
             fatalError("Failed to create SwiftData container: \(error)")
+        }
+    }
+
+    private static func registerFonts() {
+        let fontFiles = [
+            "Fraunces-Italic-VariableFont_SOFT,WONK,opsz,wght",
+            "Inter-VariableFont_opsz,wght"
+        ]
+        for name in fontFiles {
+            guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else {
+                print("⚠️ Font file not found in bundle: \(name).ttf")
+                continue
+            }
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
     }
 
