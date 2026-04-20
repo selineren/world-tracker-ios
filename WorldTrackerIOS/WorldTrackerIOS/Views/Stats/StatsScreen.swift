@@ -147,29 +147,51 @@ struct StatsScreen: View {
     }
 
     private var statsHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Your journey")
-                .eyebrowStyle()
-
-            HStack(spacing: 0) {
-                Text("The ")
-                    .font(AppTypography.displayMedium)
-                    .foregroundStyle(Color.appInk)
-                Text("numbers")
-                    .font(AppTypography.displayMedium)
-                    .foregroundStyle(Color.appSky)
+        ZStack(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Your journey").eyebrowStyle()
+                HStack(spacing: 0) {
+                    Text("The ")
+                        .font(.system(size: 44, weight: .regular, design: .serif))
+                        .foregroundStyle(Color.appInk)
+                    Text("numbers")
+                        .font(AppTypography.displayLarge)
+                        .foregroundStyle(Color.appSky)
+                }
             }
+
+            // Confetti decorations
+            Circle().fill(Color.appRose).frame(width: 9, height: 9)
+                .offset(x: 212, y: 8)
+            Text("▶")
+                .font(.system(size: 11, weight: .bold)).foregroundStyle(Color.appLime)
+                .offset(x: 178, y: 52)
+            Text("★")
+                .font(.system(size: 18)).foregroundStyle(Color.appSunset)
+                .offset(x: 228, y: 60)
+            ConfettiWave()
+                .stroke(Color.appRose, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .frame(width: 28, height: 20)
+                .offset(x: 244, y: 22)
+            Text("◀")
+                .font(.system(size: 13, weight: .bold)).foregroundStyle(Color.appInk)
+                .offset(x: 272, y: 74)
+            Text("★")
+                .font(.system(size: 12)).foregroundStyle(Color.appLime)
+                .offset(x: 213, y: 108)
         }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("You've explored")
                 .font(AppTypography.eyebrow)
+                .fontWeight(.bold)
                 .tracking(2.0)
                 .textCase(.uppercase)
                 .foregroundStyle(Color.white.opacity(0.82))
-                .padding(.bottom, 8)
+                .padding(.bottom, 6)
 
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text("\(visitedCountriesCount)")
@@ -180,7 +202,7 @@ struct StatsScreen: View {
                     .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.85))
             }
-            .padding(.bottom, 10)
+            .padding(.bottom, 8)
 
             Text("\(visitedPercentage, specifier: "%.1f")% of the world · \(continentsVisitedCount) continents")
                 .font(AppTypography.bodySmall)
@@ -188,7 +210,7 @@ struct StatsScreen: View {
                 .foregroundStyle(Color.white.opacity(0.9))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
+        .padding(18)
         .background(
             ZStack(alignment: .bottomTrailing) {
                 Color.appRose
@@ -200,8 +222,8 @@ struct StatsScreen: View {
                     .padding(.bottom, -28)
             }
         )
-        .clipShape(RoundedRectangle(cornerRadius: 22))
-        .shadow(color: Color.appRose.opacity(0.28), radius: 16, x: 0, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 26))
+        .shadow(color: Color.appRose.opacity(0.32), radius: 28, x: 0, y: 10)
     }
 
     // MARK: - UI
@@ -210,47 +232,50 @@ struct StatsScreen: View {
         NavigationStack {
             ZStack {
                 List {
-                    // MARK: - Stats Header + Hero Card
+                    // MARK: - Stats Header + Hero Card + Mini Stats
                     Section {
-                        VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 4) {
                             statsHeader
+                                .padding(.horizontal, 16)
                             heroCard
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 14)
+                            HStack(spacing: 10) {
+                                MiniStatCard(
+                                    value: "\(visitedThisYear.count)",
+                                    label: "in \(currentYear)",
+                                    background: Color.appLime,
+                                    foreground: Color.appInk
+                                )
+                                MiniStatCard(
+                                    value: "\(wantToVisitCount)",
+                                    label: "on wishlist",
+                                    background: Color.appAqua,
+                                    foreground: Color.appInk
+                                )
+                                MiniStatCard(
+                                    value: "\(totalPhotosCount)",
+                                    label: "photos",
+                                    background: Color.appSunset,
+                                    foreground: .white
+                                )
+                            }
+                            .padding(.horizontal, 16)
                         }
-                        .padding(.vertical, 8)
+                        .padding(.top, 24)
                         .listRowBackground(Color.appPaper)
                         .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 12, trailing: 20))
-                    }
-                    
-                    // MARK: - Mini Stats
-                    Section {
-                        HStack(spacing: 10) {
-                            MiniStatCard(
-                                value: "\(visitedThisYear.count)",
-                                label: "in \(currentYear)",
-                                background: Color.appLime,
-                                foreground: Color.appInk
-                            )
-                            MiniStatCard(
-                                value: "\(wantToVisitCount)",
-                                label: "on wishlist",
-                                background: Color.appAqua,
-                                foreground: Color.appInk
-                            )
-                            MiniStatCard(
-                                value: "\(totalPhotosCount)",
-                                label: "photos",
-                                background: Color.appSunset,
-                                foreground: .white
-                            )
-                        }
-                        .listRowBackground(Color.appPaper)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 16, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     }
                     
                     // MARK: - Badges
                     Section {
+                        Text("Badges").eyebrowStyle()
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            .listRowBackground(Color.appPaper)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets())
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 10) {
                                 ForEach(achievements) { achievement in
@@ -258,50 +283,22 @@ struct StatsScreen: View {
                                 }
                             }
                             .padding(.vertical, 6)
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, 16)
                         }
                         .listRowBackground(Color.appPaper)
                         .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
-                    } header: {
-                        Text("BADGES")
-                            .foregroundStyle(Color.appInk3)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
                     }
-                    
-                    // MARK: - Visited Countries Preview
-                    if !visitedCountries.isEmpty {
-                        Section {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(visitedCountries) { country in
-                                        NavigationLink {
-                                            CountryDetailScreen(country: country)
-                                        } label: {
-                                            VStack(spacing: 4) {
-                                                Text(country.flagEmoji)
-                                                    .font(.system(size: 32))
-                                                Text(country.name)
-                                                    .font(.caption2)
-                                                    .lineLimit(1)
-                                                    .frame(width: 70)
-                                            }
-                                            .padding(8)
-                                            .background(.thinMaterial)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        } header: {
-                            Text("All Visited Countries")
-                        }
-                    }
-                    
+
                     // MARK: - Travel Wishlist
                     if !wantToVisitCountries.isEmpty {
                         Section {
+                            Text("Travel Wishlist").eyebrowStyle()
+                                .padding(.horizontal, 16)
+                                .padding(.top, 8)
+                                .listRowBackground(Color.appPaper)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets())
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
                                     ForEach(wantToVisitCountries) { country in
@@ -312,7 +309,6 @@ struct StatsScreen: View {
                                                 ZStack(alignment: .topTrailing) {
                                                     Text(country.flagEmoji)
                                                         .font(.system(size: 32))
-                                                    
                                                     Image(systemName: "star.fill")
                                                         .font(.caption2)
                                                         .foregroundStyle(.orange)
@@ -332,83 +328,107 @@ struct StatsScreen: View {
                                 }
                                 .padding(.vertical, 4)
                             }
-                        } header: {
-                            Text("Travel Wishlist")
-                        }
-                    }
-                    
-                    // MARK: - Visited by Continent
-                    Section {
-                        ForEach(visitedByContinent, id: \.continent.id) { item in
-                            let accent = continentAccent(for: item.continent)
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text(item.continent.displayName)
-                                        .font(AppTypography.labelSemiBold)
-                                        .foregroundStyle(Color.appInk)
-
-                                    Spacer()
-
-                                    Text("\(item.visited) / \(item.total)")
-                                        .font(AppTypography.bodySmall)
-                                        .foregroundStyle(Color.appInk3)
-
-                                    Text("· \(Int(item.percentage))%")
-                                        .font(AppTypography.bodySmall)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(accent)
-                                }
-
-                                GeometryReader { geometry in
-                                    ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 5)
-                                            .fill(accent.opacity(0.14))
-                                            .frame(height: 10)
-
-                                        if item.percentage > 0 {
-                                            RoundedRectangle(cornerRadius: 5)
-                                                .fill(
-                                                    LinearGradient(
-                                                        colors: [accent.opacity(0.55), accent],
-                                                        startPoint: .leading,
-                                                        endPoint: .trailing
-                                                    )
-                                                )
-                                                .frame(
-                                                    width: geometry.size.width * (item.percentage / 100),
-                                                    height: 10
-                                                )
-                                        }
-                                    }
-                                }
-                                .frame(height: 10)
-
-                                if item.wantToVisit > 0 {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "star.fill")
-                                            .font(.caption2)
-                                            .foregroundStyle(Color.appSunset)
-                                        Text("\(item.wantToVisit) on wishlist")
-                                            .font(AppTypography.caption)
-                                            .foregroundStyle(Color.appInk3)
-                                    }
-                                }
-                            }
-                            .padding(14)
-                            .background(accent.opacity(0.13))
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
                             .listRowBackground(Color.appPaper)
                             .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
                         }
-                    } header: {
-                        Text("Progress by Continent")
-                            .foregroundStyle(Color.appInk3)
+                    }
+
+                    // MARK: - Visited by Continent
+                    Section {
+                        Text("Progress by Continent").eyebrowStyle()
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            .listRowBackground(Color.appPaper)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets())
+                        LazyVGrid(
+                            columns: [GridItem(.flexible(), spacing: 12),
+                                      GridItem(.flexible(), spacing: 12)],
+                            spacing: 12
+                        ) {
+                            ForEach(visitedByContinent, id: \.continent.id) { item in
+                                let accent = continentAccent(for: item.continent)
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text(item.continent.displayName)
+                                        .font(AppTypography.displaySmall)
+                                        .foregroundStyle(Color.appInk)
+                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                        Text("\(item.visited)")
+                                            .font(AppTypography.statLarge)
+                                            .foregroundStyle(Color.appInk)
+                                        Text("/ \(item.total)")
+                                            .font(AppTypography.bodySmall)
+                                            .foregroundStyle(Color.appInk3)
+                                    }
+                                    continentDots(visited: item.visited, total: item.total, accent: accent)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                .padding(14)
+                                .background(accent.opacity(0.13))
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .aspectRatio(1, contentMode: .fit)
+                            }
+                        }
+                        .listRowBackground(Color.appPaper)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    }
+
+                    // MARK: - Visited Countries
+                    if !visitedCountries.isEmpty {
+                        Section {
+                            Text("Visited Countries").eyebrowStyle()
+                                .padding(.horizontal, 16)
+                                .padding(.top, 8)
+                                .listRowBackground(Color.appPaper)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets())
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(Array(visitedCountries.enumerated()), id: \.element.id) { index, country in
+                                        let chipColors: [Color] = [.appRose, .appSky, .appLime, .appSunset, .appAqua, .appBlush]
+                                        let accent = chipColors[index % chipColors.count]
+                                        NavigationLink {
+                                            CountryDetailScreen(country: country)
+                                        } label: {
+                                            HStack(spacing: 7) {
+                                                Text(country.flagEmoji)
+                                                    .font(.system(size: 22))
+                                                Text(country.name)
+                                                    .font(AppTypography.bodySmall)
+                                                    .fontWeight(.medium)
+                                                    .foregroundStyle(Color.appInk)
+                                                    .lineLimit(1)
+                                            }
+                                            .padding(.vertical, 10)
+                                            .padding(.horizontal, 14)
+                                            .frame(maxWidth: 160)
+                                            .background(Color.appCard)
+                                            .clipShape(Capsule())
+                                            .overlay(Capsule().stroke(accent, lineWidth: 2))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 14)
+                            }
+                            .listRowBackground(Color.appPaper)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
+                        }
                     }
 
                     // MARK: - Fresh Memories
                     if !recentVisits.isEmpty {
                         Section {
+                            Text("Fresh Memories").eyebrowStyle()
+                                .padding(.horizontal, 16)
+                                .padding(.top, 8)
+                                .listRowBackground(Color.appPaper)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets())
                             ForEach(
                                 Array(recentVisits.prefix(8).enumerated()),
                                 id: \.element.country.id
@@ -418,7 +438,6 @@ struct StatsScreen: View {
                                         CountryDetailScreen(country: item.country)
                                     } label: { EmptyView() }
                                         .opacity(0)
-
                                     HStack(spacing: 12) {
                                         Text(item.country.flagEmoji)
                                             .font(.system(size: 28))
@@ -426,12 +445,10 @@ struct StatsScreen: View {
                                             .background(Color.white)
                                             .clipShape(RoundedRectangle(cornerRadius: 12))
                                             .shadow(color: Color.appInk.opacity(0.07), radius: 4, x: 0, y: 2)
-
                                         VStack(alignment: .leading, spacing: 3) {
                                             Text(item.country.name)
                                                 .font(AppTypography.displaySmall)
                                                 .foregroundStyle(Color.appInk)
-
                                             HStack(spacing: 4) {
                                                 Text(formattedDate(item.date))
                                                     .foregroundStyle(memoryCardAccent(at: index))
@@ -446,9 +463,7 @@ struct StatsScreen: View {
                                             .font(AppTypography.bodySmall)
                                             .fontWeight(.medium)
                                         }
-
                                         Spacer()
-
                                         Image(systemName: "chevron.right")
                                             .font(.caption2)
                                             .fontWeight(.semibold)
@@ -461,11 +476,8 @@ struct StatsScreen: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 18))
                                 .listRowBackground(Color.appPaper)
                                 .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                             }
-                        } header: {
-                            Text("Fresh Memories")
-                                .foregroundStyle(Color.appInk3)
                         }
                     }
 
@@ -486,9 +498,8 @@ struct StatsScreen: View {
                 }
             }
             .background(Color.appPaper)
-            .navigationTitle("Stats")
-            .navigationBarTitleDisplayMode(.inline)
-            .listStyle(.insetGrouped)
+            .toolbar(.hidden, for: .navigationBar)
+            .listStyle(.plain)
         }
     }
     
@@ -521,6 +532,17 @@ struct StatsScreen: View {
     
     private func photoCount(for countryId: String) -> Int {
         visitedVisits.first { $0.countryId == countryId }?.photos.count ?? 0
+    }
+
+    private func continentDots(visited: Int, total: Int, accent: Color) -> some View {
+        let cols = Array(repeating: GridItem(.fixed(5), spacing: 3), count: 16)
+        return LazyVGrid(columns: cols, alignment: .leading, spacing: 3) {
+            ForEach(0..<min(total, 48), id: \.self) { i in
+                Circle()
+                    .fill(i < visited ? accent : accent.opacity(0.22))
+                    .frame(width: 5, height: 5)
+            }
+        }
     }
 
     private func memoryCardBG(at index: Int) -> Color {
@@ -600,7 +622,25 @@ struct StatsScreen: View {
     }
     
     // MARK: - Supporting Views
-    
+
+    private struct ConfettiWave: Shape {
+        func path(in rect: CGRect) -> Path {
+            var p = Path()
+            p.move(to: CGPoint(x: 0, y: rect.midY))
+            p.addCurve(
+                to: CGPoint(x: rect.width / 2, y: rect.midY),
+                control1: CGPoint(x: rect.width * 0.15, y: 0),
+                control2: CGPoint(x: rect.width * 0.35, y: rect.height)
+            )
+            p.addCurve(
+                to: CGPoint(x: rect.width, y: rect.midY),
+                control1: CGPoint(x: rect.width * 0.65, y: 0),
+                control2: CGPoint(x: rect.width * 0.85, y: rect.height)
+            )
+            return p
+        }
+    }
+
     private struct MiniStatCard: View {
         let value: String
         let label: String
@@ -608,17 +648,17 @@ struct StatsScreen: View {
         let foreground: Color
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(value)
                     .font(AppTypography.statLarge)
                     .foregroundStyle(foreground)
+                Spacer()
                 Text(label)
                     .font(AppTypography.caption)
-                    .fontWeight(.medium)
                     .foregroundStyle(foreground.opacity(0.75))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
+            .padding(16)
             .background(background)
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .shadow(color: Color.appInk.opacity(0.06), radius: 8, x: 0, y: 3)
