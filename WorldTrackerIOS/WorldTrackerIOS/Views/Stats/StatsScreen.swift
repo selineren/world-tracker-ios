@@ -249,18 +249,23 @@ struct StatsScreen: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 16, trailing: 20))
                     }
                     
-                    // MARK: - Achievements
+                    // MARK: - Badges
                     Section {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 10) {
                                 ForEach(achievements) { achievement in
                                     AchievementCard(achievement: achievement)
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 20)
                         }
+                        .listRowBackground(Color.appPaper)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
                     } header: {
-                        Text("Achievements (\(achievementSummary.unlocked)/\(achievementSummary.total))")
+                        Text("BADGES")
+                            .foregroundStyle(Color.appInk3)
                     }
                     
                     // MARK: - Visited Countries Preview
@@ -596,33 +601,72 @@ struct StatsScreen: View {
     
     private struct AchievementCard: View {
         let achievement: Achievement
-        
-        var body: some View {
-            VStack(spacing: 6) {
-                // Achievement icon
-                Image(systemName: achievement.icon)
-                    .font(.system(size: 32))
-                    .foregroundStyle(achievement.isUnlocked ? .primary : .secondary)
-                    .opacity(achievement.isUnlocked ? 1.0 : 0.3)
-                
-                // Achievement title
-                Text(achievement.title)
-                    .font(.caption2)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(achievement.isUnlocked ? .primary : .secondary)
-                    .frame(height: 28) // Fixed height for alignment
-                
-                // Unlock indicator
-                Image(systemName: achievement.isUnlocked ? "checkmark.circle.fill" : "lock.fill")
-                    .font(.caption2)
-                    .foregroundStyle(achievement.isUnlocked ? .green : .secondary)
+
+        private var palette: (bg: Color, fg: Color) {
+            guard achievement.isUnlocked else {
+                return (bg: .appCard, fg: .appInk)
             }
-            .frame(width: 85)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 8)
-            .background(.thinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            switch achievement.type {
+            case .firstCountry:         return (bg: .appRose,   fg: .white)
+            case .firstNote:            return (bg: .appBlush,  fg: .appInk)
+            case .firstPhoto:           return (bg: .appAqua,   fg: .appInk)
+            case .countries(let n):     return n <= 5
+                                            ? (bg: .appLime,    fg: .appInk)
+                                            : (bg: .appSunset,  fg: .white)
+            case .continents:           return (bg: .appBlush,  fg: .appInk)
+            case .allContinents:        return (bg: .appAqua,   fg: .appInk)
+            }
+        }
+
+        private var shortLabel: String {
+            switch achievement.type {
+            case .firstCountry:         return "First Country"
+            case .firstNote:            return "First Note"
+            case .firstPhoto:           return "First Photo"
+            case .countries(let n):     return "\(n) Countries"
+            case .continents(let n):    return "\(n) Continents"
+            case .allContinents:        return "All Continents"
+            }
+        }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(achievement.isUnlocked ? "🏆" : "🔒")
+                    .font(.system(size: 28))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(shortLabel)
+                        .font(AppTypography.displaySmall)
+                        .foregroundStyle(palette.fg)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(achievement.isUnlocked ? "Unlocked" : "Locked")
+                        .font(AppTypography.eyebrow)
+                        .fontWeight(.bold)
+                        .tracking(1.2)
+                        .textCase(.uppercase)
+                        .foregroundStyle(palette.fg.opacity(achievement.isUnlocked ? 0.82 : 0.45))
+                }
+            }
+            .frame(width: 110, height: 110, alignment: .leading)
+            .padding(13)
+            .background(palette.bg)
+            .overlay {
+                if !achievement.isUnlocked {
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(Color.appLine, lineWidth: 1)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .shadow(
+                color: Color.appInk.opacity(achievement.isUnlocked ? 0.09 : 0.04),
+                radius: achievement.isUnlocked ? 12 : 5,
+                x: 0,
+                y: achievement.isUnlocked ? 6 : 2
+            )
+            .opacity(achievement.isUnlocked ? 1.0 : 0.88)
         }
     }
 }
