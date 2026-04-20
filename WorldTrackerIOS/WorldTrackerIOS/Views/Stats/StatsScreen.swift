@@ -132,53 +132,86 @@ struct StatsScreen: View {
             }
     }
     
+    // MARK: - Design system views
+
+    private var continentsVisitedCount: Int {
+        visitedByContinent.filter { $0.visited > 0 }.count
+    }
+
+    private var statsHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Your journey")
+                .eyebrowStyle()
+
+            HStack(spacing: 0) {
+                Text("The ")
+                    .font(AppTypography.displayMedium)
+                    .foregroundStyle(Color.appInk)
+                Text("numbers")
+                    .font(AppTypography.displayMedium)
+                    .foregroundStyle(Color.appSky)
+            }
+        }
+    }
+
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("You've explored")
+                .font(AppTypography.eyebrow)
+                .tracking(2.0)
+                .textCase(.uppercase)
+                .foregroundStyle(Color.white.opacity(0.82))
+                .padding(.bottom, 8)
+
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text("\(visitedCountriesCount)")
+                    .font(AppTypography.displayHero)
+                    .foregroundStyle(Color.white)
+
+                Text("of \(totalCountriesCount)")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.85))
+            }
+            .padding(.bottom, 10)
+
+            Text("\(visitedPercentage, specifier: "%.1f")% of the world · \(continentsVisitedCount) continents")
+                .font(AppTypography.bodySmall)
+                .fontWeight(.medium)
+                .foregroundStyle(Color.white.opacity(0.9))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(22)
+        .background(
+            ZStack(alignment: .bottomTrailing) {
+                Color.appRose
+                Text("\(Int(visitedPercentage))%")
+                    .font(AppTypography.displayHero)
+                    .italic()
+                    .foregroundStyle(Color.white.opacity(0.09))
+                    .padding(.trailing, -12)
+                    .padding(.bottom, -28)
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: Color.appRose.opacity(0.28), radius: 16, x: 0, y: 8)
+    }
+
     // MARK: - UI
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 List {
-                    // MARK: - Overview Section
+                    // MARK: - Stats Header + Hero Card
                     Section {
-                        VStack(alignment: .leading, spacing: 16) {
-                            // Main stat card - Visited
-                            VStack(spacing: 8) {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text("\(visitedCountriesCount)")
-                                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                                        .foregroundStyle(.green)
-                                    Text("/ \(totalCountriesCount)")
-                                        .font(.title2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                
-                                Text("Countries Visited")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                
-                                // Progress bar
-                                GeometryReader { geometry in
-                                    ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .fill(Color.gray.opacity(0.2))
-                                            .frame(height: 8)
-                                        
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .fill(Color.green)
-                                            .frame(width: geometry.size.width * (visitedPercentage / 100), height: 8)
-                                    }
-                                }
-                                .frame(height: 8)
-                                
-                                Text("\(visitedPercentage, specifier: "%.1f")% of the world")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
+                        VStack(alignment: .leading, spacing: 20) {
+                            statsHeader
+                            heroCard
                         }
-                    } header: {
-                        Text("Overview")
+                        .padding(.vertical, 8)
+                        .listRowBackground(Color.appPaper)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 12, trailing: 20))
                     }
                     
                     // MARK: - Quick Stats
@@ -428,8 +461,9 @@ struct StatsScreen: View {
                         Text("Recent Visits")
                     }
                 }
-                
-                // Loading overlay
+                .scrollContentBackground(.hidden)
+
+                // Loading overlay (unchanged)
                 if vm.isLoading {
                     VStack(spacing: 16) {
                         ProgressView()
@@ -442,7 +476,9 @@ struct StatsScreen: View {
                     .background(Color(.systemBackground).opacity(0.9))
                 }
             }
+            .background(Color.appPaper)
             .navigationTitle("Stats")
+            .navigationBarTitleDisplayMode(.inline)
             .listStyle(.insetGrouped)
         }
     }
