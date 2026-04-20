@@ -337,59 +337,6 @@ struct StatsScreen: View {
                         }
                     }
                     
-                    // MARK: - This Year Section
-                    if !visitedThisYear.isEmpty {
-                        Section {
-                            ForEach(visitedThisYear.prefix(5), id: \.country.id) { item in
-                                NavigationLink {
-                                    CountryDetailScreen(country: item.country)
-                                } label: {
-                                    HStack(spacing: 12) {
-                                        Text(item.country.flagEmoji)
-                                            .font(.title2)
-                                        
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(item.country.name)
-                                            Text(item.country.continent.displayName)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Text(formattedDate(item.date))
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .padding(.vertical, 2)
-                                }
-                            }
-                            
-                            // Show "View All" button if there are more than 5
-                            if visitedThisYear.count > 5 {
-                                NavigationLink {
-                                    VisitedThisYearListView(visits: visitedThisYear)
-                                } label: {
-                                    HStack {
-                                        Text("View All \(visitedThisYear.count) Countries")
-                                            .font(.subheadline)
-                                            .fontWeight(.medium)
-                                        
-                                        Spacer()
-                                        
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .foregroundStyle(.blue)
-                                    .padding(.vertical, 8)
-                                }
-                            }
-                        } header: {
-                            Text("Visited This Year (\(visitedThisYear.count))")
-                        }
-                    }
-                    
                     // MARK: - Visited by Continent
                     Section {
                         ForEach(visitedByContinent, id: \.continent.id) { item in
@@ -458,41 +405,70 @@ struct StatsScreen: View {
                         Text("Progress by Continent")
                             .foregroundStyle(Color.appInk3)
                     }
-                    
-                    // MARK: - Recent Visits
-                    Section {
-                        if recentVisits.isEmpty {
-                            Text("No visits yet.")
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(recentVisits.prefix(10), id: \.country.id) { item in
-                                NavigationLink {
-                                    CountryDetailScreen(country: item.country)
-                                } label: {
+
+                    // MARK: - Fresh Memories
+                    if !recentVisits.isEmpty {
+                        Section {
+                            ForEach(
+                                Array(recentVisits.prefix(8).enumerated()),
+                                id: \.element.country.id
+                            ) { index, item in
+                                ZStack(alignment: .trailing) {
+                                    NavigationLink {
+                                        CountryDetailScreen(country: item.country)
+                                    } label: { EmptyView() }
+                                        .opacity(0)
+
                                     HStack(spacing: 12) {
                                         Text(item.country.flagEmoji)
-                                            .font(.title2)
-                                        
-                                        VStack(alignment: .leading, spacing: 2) {
+                                            .font(.system(size: 28))
+                                            .frame(width: 48, height: 48)
+                                            .background(Color.white)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            .shadow(color: Color.appInk.opacity(0.07), radius: 4, x: 0, y: 2)
+
+                                        VStack(alignment: .leading, spacing: 3) {
                                             Text(item.country.name)
-                                            Text(item.country.continent.displayName)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
+                                                .font(AppTypography.displaySmall)
+                                                .foregroundStyle(Color.appInk)
+
+                                            HStack(spacing: 4) {
+                                                Text(formattedDate(item.date))
+                                                    .foregroundStyle(memoryCardAccent(at: index))
+                                                let photos = photoCount(for: item.country.id)
+                                                if photos > 0 {
+                                                    Text("·")
+                                                        .foregroundStyle(Color.appInk3)
+                                                    Text("\(photos) photos")
+                                                        .foregroundStyle(Color.appInk3)
+                                                }
+                                            }
+                                            .font(AppTypography.bodySmall)
+                                            .fontWeight(.medium)
                                         }
-                                        
+
                                         Spacer()
-                                        
-                                        Text(formattedDate(item.date))
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption2)
+                                            .fontWeight(.semibold)
+                                            .foregroundStyle(Color.appInk3)
                                     }
-                                    .padding(.vertical, 2)
                                 }
+                                .contentShape(Rectangle())
+                                .padding(14)
+                                .background(memoryCardBG(at: index))
+                                .clipShape(RoundedRectangle(cornerRadius: 18))
+                                .listRowBackground(Color.appPaper)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
                             }
+                        } header: {
+                            Text("Fresh Memories")
+                                .foregroundStyle(Color.appInk3)
                         }
-                    } header: {
-                        Text("Recent Visits")
                     }
+
                 }
                 .scrollContentBackground(.hidden)
 
@@ -543,6 +519,28 @@ struct StatsScreen: View {
         }
     }
     
+    private func photoCount(for countryId: String) -> Int {
+        visitedVisits.first { $0.countryId == countryId }?.photos.count ?? 0
+    }
+
+    private func memoryCardBG(at index: Int) -> Color {
+        switch index % 4 {
+        case 0:  return .appAqua
+        case 1:  return .appBlush
+        case 2:  return .appLime.opacity(0.30)
+        default: return .appSunset.opacity(0.22)
+        }
+    }
+
+    private func memoryCardAccent(at index: Int) -> Color {
+        switch index % 4 {
+        case 0:  return .appSky
+        case 1:  return .appRose
+        case 2:  return .appLime
+        default: return .appSunset
+        }
+    }
+
     private func formattedDate(_ date: Date?) -> String {
         guard let date else { return "—" }
         return date.formatted(date: .abbreviated, time: .omitted)
