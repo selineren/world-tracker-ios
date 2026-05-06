@@ -7,212 +7,171 @@
 
 import SwiftUI
 
+// MARK: - Countries Screen
+
 struct CountriesScreen: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var vm = CountriesViewModel()
-    @State private var isSearchFocused = false
-    
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Continent filter chips - shown when search is active
-                if isSearchFocused || vm.isSearching {
-                    continentFilterChips
-                        .padding(.horizontal)
-                        .padding(.vertical, 8)
-                        .background(Color(.systemGroupedBackground))
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-                
-                ZStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Search bar
+                    searchBar
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+
+                    // Continent filter chips
+                    continentChips
+                        .padding(.top, 12)
+
                     if vm.isSearching {
-                        // Show flat list when searching
-                        searchResultsList
-                            .transition(.opacity)
+                        searchResults
+                            .padding(.top, 12)
                     } else {
-                        // Show continent grid when not searching
+                        summaryLabel
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                            .padding(.bottom, 12)
+
                         continentGrid
-                            .transition(.opacity)
-                    }
-                    
-                    if vm.isLoading {
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .scaleEffect(1.5)
-                            Text("Loading countries...")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(.systemBackground).opacity(0.9))
+                            .padding(.horizontal, 16)
                     }
                 }
+                .padding(.bottom, 32)
             }
-            .animation(.easeInOut(duration: 0.25), value: isSearchFocused)
-            .animation(.easeInOut(duration: 0.25), value: vm.isSearching)
+            .background(Color(hex: "#F7F7F7"))
             .navigationTitle("Countries")
-            .searchable(text: $vm.searchText, isPresented: $isSearchFocused, prompt: "Search countries")
-            .onChange(of: vm.isSearching) { oldValue, newValue in
-                // Reset continent filter when search is cleared
-                if !newValue && vm.selectedContinent != nil {
-                    vm.selectedContinent = nil
-                }
-            }
-            .onChange(of: isSearchFocused) { oldValue, newValue in
-                // Reset continent filter when search is dismissed (Cancel button)
-                if !newValue && vm.selectedContinent != nil {
-                    vm.selectedContinent = nil
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        vm.load()
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .disabled(vm.isLoading)
-                }
-            }
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear { vm.load() }
         }
     }
-    
-    // MARK: - Continent Filter Chips
-    
-    private var continentFilterChips: some View {
+
+    // MARK: Search Bar
+
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16))
+                .foregroundStyle(Color(hex: "#6B6B6B"))
+            TextField("Search countries...", text: $vm.searchText)
+                .font(.system(size: 16))
+                .foregroundStyle(Color(hex: "#1b1b1b"))
+            if !vm.searchText.isEmpty {
+                Button { vm.searchText = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 44)
+        .background(Color(hex: "#EEEEEE"))
+        .clipShape(Capsule())
+    }
+
+    // MARK: Continent Chips
+
+    private var continentChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                // "All" chip
-                FilterChip(
-                    title: "All",
-                    isSelected: vm.selectedContinent == nil,
-                    action: {
-                        vm.selectedContinent = nil
+                continentChip("All", isSelected: vm.selectedContinent == nil) {
+                    vm.selectedContinent = nil
+                }
+                ForEach(Continent.allCases) { c in
+                    continentChip(c.displayName, isSelected: vm.selectedContinent == c) {
+                        vm.selectedContinent = c
                     }
-                )
-                
-                // Individual continent chips
-                ForEach(Continent.allCases) { continent in
-                    FilterChip(
-                        title: continent.displayName,
-                        isSelected: vm.selectedContinent == continent,
-                        action: {
-                            vm.selectedContinent = continent
-                        }
-                    )
                 }
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 16)
         }
     }
-    
-    // MARK: - Continent Grid View
-    
+
+    private func continentChip(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(isSelected ? .white : Color(hex: "#6B6B6B"))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 8)
+                .background(isSelected ? Color.black : Color.white)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(isSelected ? Color.clear : Color(hex: "#E2E2E2"), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: Summary Label
+
+    private var summaryLabel: some View {
+        let allCountries = vm.countries
+        let totalVisited = allCountries.filter { appState.isVisited($0.id) }.count
+        let continentsWithVisit = Set(
+            allCountries.filter { appState.isVisited($0.id) }.map { $0.continent }
+        ).count
+
+        return Text("\(continentsWithVisit) CONTINENTS · \(totalVisited) COUNTRIES VISITED")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(Color(hex: "#9E9E9E"))
+            .tracking(0.5)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: Continent Grid
+
     private var continentGrid: some View {
-        ScrollView {
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 16) {
-                ForEach(vm.groupedByContinent, id: \.continent.id) { section in
+        LazyVGrid(
+            columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+            spacing: 12
+        ) {
+            ForEach(vm.groupedByContinent, id: \.continent.id) { section in
+                NavigationLink {
+                    ContinentCountriesView(
+                        continent: section.continent,
+                        countries: section.countries
+                    )
+                } label: {
+                    ContinentCard(
+                        continent: section.continent,
+                        totalCount: section.countries.count,
+                        visitedCount: section.countries.filter { appState.isVisited($0.id) }.count
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: Search Results
+
+    private var searchResults: some View {
+        VStack(spacing: 8) {
+            if vm.filteredCountries.isEmpty {
+                Text("No countries match \"\(vm.searchText)\"")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .padding(.top, 40)
+                    .frame(maxWidth: .infinity)
+            } else {
+                ForEach(vm.filteredCountries) { country in
                     NavigationLink {
-                        ContinentCountriesView(
-                            continent: section.continent,
-                            countries: section.countries,
-                            appState: appState
-                        )
+                        CountryDetailScreen(country: country)
                     } label: {
-                        ContinentCard(
-                            continent: section.continent,
-                            totalCount: section.countries.count,
-                            visitedCount: section.countries.filter { appState.isVisited($0.id) }.count
+                        CountryListRow(
+                            country: country,
+                            isVisited: appState.isVisited(country.id),
+                            isWishlist: appState.wantToVisit(country.id)
                         )
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding()
         }
-        .overlay {
-            if !vm.isLoading && vm.groupedByContinent.isEmpty {
-                if let error = vm.loadError {
-                    ContentUnavailableView(
-                        "Failed to Load Countries",
-                        systemImage: "exclamationmark.triangle",
-                        description: Text(error)
-                    )
-                } else {
-                    ContentUnavailableView(
-                        "No Countries",
-                        systemImage: "globe",
-                        description: Text("No countries available.")
-                    )
-                }
-            }
-        }
-    }
-    
-    // MARK: - Search Results List
-    
-    private var searchResultsList: some View {
-        List {
-            // Result count section
-            Section {
-                EmptyView()
-            } header: {
-                resultCountHeader
-            }
-            .listRowInsets(EdgeInsets())
-            
-            // Country results
-            Section {
-                ForEach(vm.filteredCountries) { country in
-                    let visited = appState.isVisited(country.id)
-                    
-                    NavigationLink {
-                        CountryDetailScreen(country: country)
-                    } label: {
-                        CountryRow(country: country, isVisited: visited)
-                    }
-                    .listRowBackground(visited ? Color.green.opacity(0.12) : Color.clear)
-                }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .overlay {
-            if !vm.isLoading && vm.filteredCountries.isEmpty {
-                ContentUnavailableView(
-                    "No Results",
-                    systemImage: "magnifyingglass",
-                    description: Text("No countries match your search")
-                )
-            }
-        }
-    }
-    
-    // MARK: - Result Count Header
-    
-    private var resultCountHeader: some View {
-        HStack {
-            let count = vm.filteredCountries.count
-            let filterText = vm.selectedContinent?.displayName ?? "All Continents"
-            
-            if count > 0 {
-                Text("\(count) \(count == 1 ? "country" : "countries")")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                
-                if vm.isFiltering {
-                    Text("•")
-                        .foregroundStyle(.secondary)
-                    Text(filterText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .textCase(nil)
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 16)
     }
 }
 
@@ -222,171 +181,255 @@ private struct ContinentCard: View {
     let continent: Continent
     let totalCount: Int
     let visitedCount: Int
-    
-    var percentage: Double {
+
+    private var percentage: Double {
         guard totalCount > 0 else { return 0 }
-        return Double(visitedCount) / Double(totalCount) * 100
+        return Double(visitedCount) / Double(totalCount)
     }
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                Text(continentEmoji)
-                    .font(.system(size: 32))
-                Spacer()
-            }
-            
-            // Title
+        VStack(alignment: .leading, spacing: 10) {
             Text(continent.displayName)
-                .font(.headline)
-                .foregroundStyle(.primary)
-            
-            // Stats
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(visitedCount) / \(totalCount)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                
-                // Progress bar
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: 4)
-                        
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(continentColor)
-                            .frame(width: geometry.size.width * (percentage / 100), height: 4)
-                    }
-                }
-                .frame(height: 4)
-                
-                if visitedCount > 0 {
-                    Text("\(Int(percentage))% visited")
-                        .font(.caption)
-                        .foregroundStyle(continentColor)
-                } else {
-                    Text("Not visited yet")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Color.black)
+                .tracking(-0.3)
+
+            // Progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color(hex: "#F0F0F0"))
+                        .frame(height: 4)
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(continentColor)
+                        .frame(width: max(geo.size.width * percentage, percentage > 0 ? 6 : 0), height: 4)
                 }
             }
+            .frame(height: 4)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(visitedCount) VISITED")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(continentColor)
+                    .tracking(0.3)
+                Text("of \(totalCount) \(totalCount == 1 ? "country" : "countries")")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
+            }
         }
-        .padding()
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(12)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
     }
-    
-    private var continentEmoji: String {
-        switch continent {
-        case .africa: return "🌍"
-        case .antarctica: return "🇦🇶"
-        case .asia: return "🌏"
-        case .europe: return "🇪🇺"
-        case .northAmerica: return "🌎"
-        case .southAmerica: return "🗺️"
-        case .oceania: return "🏝️"
-        }
-    }
-    
+
     private var continentColor: Color {
-        switch percentage {
-        case 75...: return .green
-        case 50..<75: return .blue
-        case 25..<50: return .orange
-        case 0.1..<25: return .yellow
-        default: return .gray
+        switch continent {
+        case .europe:       return Color(hex: "#F9234D")
+        case .asia:         return Color(hex: "#F1528A")
+        case .africa:       return Color(hex: "#E6A817")
+        case .oceania:      return Color(hex: "#1D8FC2")
+        case .northAmerica: return Color(hex: "#4A90D9")
+        case .southAmerica: return Color(hex: "#F37826")
+        case .antarctica:   return Color(hex: "#9E9E9E")
         }
     }
 }
 
 // MARK: - Continent Countries View
 
-private struct ContinentCountriesView: View {
+struct ContinentCountriesView: View {
+    @EnvironmentObject private var appState: AppState
     let continent: Continent
     let countries: [Country]
-    let appState: AppState
-    
+
     @State private var searchText = ""
-    
-    var filteredCountries: [Country] {
-        if searchText.isEmpty {
-            return countries
-        }
-        return countries.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    @State private var filterMode: FilterMode = .all
+
+    enum FilterMode: String, CaseIterable {
+        case all = "All"
+        case visited = "Visited"
+        case notVisited = "Not Visited"
+        case wishlist = "Wishlist"
     }
-    
+
+    private var filtered: [Country] {
+        var result = countries.sorted { $0.name < $1.name }
+        let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty {
+            result = result.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+        }
+        switch filterMode {
+        case .all:        break
+        case .visited:    result = result.filter { appState.isVisited($0.id) }
+        case .notVisited: result = result.filter { !appState.isVisited($0.id) }
+        case .wishlist:   result = result.filter { appState.wantToVisit($0.id) }
+        }
+        return result
+    }
+
+    private var groupedAlphabetically: [(letter: String, countries: [Country])] {
+        let grouped = Dictionary(grouping: filtered) { String($0.name.prefix(1)).uppercased() }
+        return grouped.keys.sorted().map { key in (key, grouped[key]!.sorted { $0.name < $1.name }) }
+    }
+
+    private var visitedCount: Int {
+        countries.filter { appState.isVisited($0.id) }.count
+    }
+
     var body: some View {
-        List {
-            ForEach(filteredCountries) { country in
-                let visited = appState.isVisited(country.id)
-                
-                NavigationLink {
-                    CountryDetailScreen(country: country)
-                } label: {
-                    CountryRow(country: country, isVisited: visited)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Search
+                searchBar
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+
+                // Filter chips
+                filterChips
+                    .padding(.top, 12)
+
+                // Summary
+                Text("\(visitedCount) of \(countries.count) countries visited in \(continent.displayName)")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+
+                // Alphabetical sections
+                if filtered.isEmpty {
+                    Text("No countries match your filter")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 40)
+                } else {
+                    VStack(alignment: .leading, spacing: 20) {
+                        ForEach(groupedAlphabetically, id: \.letter) { group in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(group.letter)
+                                    .font(.system(size: 17, weight: .black))
+                                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                                    .padding(.horizontal, 16)
+
+                                VStack(spacing: 8) {
+                                    ForEach(group.countries) { country in
+                                        NavigationLink {
+                                            CountryDetailScreen(country: country)
+                                        } label: {
+                                            CountryListRow(
+                                                country: country,
+                                                isVisited: appState.isVisited(country.id),
+                                                isWishlist: appState.wantToVisit(country.id)
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                    .padding(.bottom, 32)
                 }
-                .listRowBackground(visited ? Color.green.opacity(0.12) : Color.clear)
             }
         }
+        .background(Color(hex: "#F7F7F7"))
         .navigationTitle(continent.displayName)
-        .searchable(text: $searchText, prompt: "Search \(continent.displayName)")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16))
+                .foregroundStyle(Color(hex: "#6B6B6B"))
+            TextField("Search \(continent.displayName)...", text: $searchText)
+                .font(.system(size: 16))
+                .foregroundStyle(Color(hex: "#1b1b1b"))
+            if !searchText.isEmpty {
+                Button { searchText = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 44)
+        .background(Color(hex: "#EEEEEE"))
+        .clipShape(Capsule())
+    }
+
+    private var filterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(FilterMode.allCases, id: \.self) { mode in
+                    Button {
+                        withAnimation(.spring(response: 0.3)) { filterMode = mode }
+                    } label: {
+                        Text(mode.rawValue)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(filterMode == mode ? .white : .black)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 8)
+                            .background(filterMode == mode ? Color.black : Color.white)
+                            .clipShape(Capsule())
+                            .overlay(filterMode == mode ? nil : Capsule().stroke(Color(hex: "#E2E2E2"), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+        }
     }
 }
 
-// MARK: - Country Row
+// MARK: - Country List Row
 
-private struct CountryRow: View {
+struct CountryListRow: View {
     let country: Country
     let isVisited: Bool
-    
+    let isWishlist: Bool
+
     var body: some View {
         HStack(spacing: 12) {
-            Text(country.flagEmoji).font(.title2)
+            Text(country.flagEmoji)
+                .font(.system(size: 28))
+                .frame(width: 40, height: 36)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(country.name)
-                    .foregroundStyle(.primary)
-            }
+            Text(country.name)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color(hex: "#1b1b1b"))
 
             Spacer()
 
             if isVisited {
-                Text("Visited")
-                    .font(.caption2)
+                Text("VISITED")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Color(hex: "#1E7F4E"))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(.green.opacity(0.15))
-                    .clipShape(Capsule())
+                    .background(Color(hex: "#1E7F4E").opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else if isWishlist {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color(hex: "#4A90D9"))
             }
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color(hex: "#CCCCCC"))
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 1)
     }
 }
-
-// MARK: - Filter Chip
-
-private struct FilterChip: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .regular)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isSelected ? Color.accentColor : Color(.secondarySystemGroupedBackground))
-                .foregroundColor(isSelected ? .white : .primary)
-                .clipShape(Capsule())
-                .scaleEffect(isSelected ? 1.05 : 1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
-        }
-        .buttonStyle(.plain)
-    }
-}
-

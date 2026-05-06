@@ -68,6 +68,8 @@ final class FirestoreUserRepository {
         
         let data: [String: Any] = [
             "email": normalizedEmail,
+            "firstName": profile.firstName,
+            "lastName": profile.lastName,
             "allowComparison": profile.allowComparison,
             "createdAt": Timestamp(date: profile.createdAt),
             "updatedAt": Timestamp(date: Date())
@@ -134,7 +136,9 @@ final class FirestoreUserRepository {
         guard let email = data["email"] as? String else {
             throw FirestoreUserRepositoryError.invalidProfileData
         }
-        
+
+        let firstName = data["firstName"] as? String ?? ""
+        let lastName = data["lastName"] as? String ?? ""
         let allowComparison = data["allowComparison"] as? Bool ?? false
         
         let createdAt: Date
@@ -154,6 +158,8 @@ final class FirestoreUserRepository {
         return UserProfile(
             userId: userId,
             email: email,
+            firstName: firstName,
+            lastName: lastName,
             allowComparison: allowComparison,
             createdAt: createdAt,
             updatedAt: updatedAt

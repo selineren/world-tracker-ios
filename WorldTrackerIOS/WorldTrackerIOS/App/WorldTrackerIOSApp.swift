@@ -155,24 +155,50 @@ struct AuthGatedRootView: View {
 private struct LoadingView: View {
     var body: some View {
         ZStack {
-            Color(.systemBackground)
+            Color.white
                 .ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                // App Logo
+
+            VStack(spacing: 32) {
                 AppLogoView()
-                
-                // App Name
-                Text("WorldTracker")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(.primary)
-                
-                // Loading Indicator
-                ProgressView()
-                    .scaleEffect(1.2)
-                    .padding(.top, 8)
+
+                Text("WORLDTRACKER")
+                    .font(.custom("Inter", size: 16))
+                    .fontWeight(.black)
+                    .tracking(4)
+                    .foregroundStyle(.black)
+
+                LoadingSpinner()
+                    .padding(.top, 48)
+            }
+
+            VStack {
+                Spacer()
+                Text("YOUR WORLD, MAPPED.")
+                    .font(.custom("Inter", size: 10))
+                    .fontWeight(.medium)
+                    .tracking(3)
+                    .foregroundStyle(Color(.secondaryLabel))
+                    .opacity(0.4)
+                    .padding(.bottom, 48)
             }
         }
+    }
+}
+
+private struct LoadingSpinner: View {
+    @State private var rotation: Double = 0
+
+    var body: some View {
+        Circle()
+            .trim(from: 0.1, to: 0.9)
+            .stroke(Color.black, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            .frame(width: 24, height: 24)
+            .rotationEffect(.degrees(rotation))
+            .onAppear {
+                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                    rotation = 360
+                }
+            }
     }
 }
 

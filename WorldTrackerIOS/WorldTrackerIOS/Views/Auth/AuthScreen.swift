@@ -11,170 +11,253 @@ struct AuthScreen: View {
     @EnvironmentObject private var authService: AuthService
     @EnvironmentObject private var appState: AppState
 
+    @State private var firstName = ""
+    @State private var lastName = ""
     @State private var email = ""
     @State private var password = ""
     @State private var isCreatingAccount = false
     @State private var errorMessage: String?
     @State private var isSubmitting = false
+    @State private var showPassword = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // MARK: - Top Spacer (Adaptive)
-                Spacer()
-                    .frame(height: 60)
-                
-                // MARK: - Branding Header
-                VStack(spacing: 16) {
-                    // App Logo
-                    AppLogoView()
-                    
-                    // App Name
-                    Text("WorldTracker")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundStyle(.primary)
-                    
-                    // Tagline
-                    Text("Track your travels around the world")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
+
+                // MARK: - Wordmark
+                Text("WORLDTRACKER")
+                    .font(.custom("Inter", size: 12))
+                    .fontWeight(.bold)
+                    .tracking(3.5)
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 64)
+
+                // MARK: - Headline
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(isCreatingAccount ? "Create your account." : "Track every place you've been.")
+                        .font(.custom("Inter", size: 32))
+                        .fontWeight(.bold)
+                        .foregroundStyle(.black)
+                        .tracking(-0.5)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("Your world, mapped.")
+                        .font(.custom("Inter", size: 15))
+                        .foregroundStyle(Color(hex: "#6B6B6B"))
                 }
-                .padding(.bottom, 48)
-                
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+                .padding(.top, 48)
+                .padding(.bottom, 32)
+
                 // MARK: - Input Fields
-                VStack(spacing: 16) {
-                    // Email Field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Email")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
-                        
-                        TextField("Email", text: $email)
-                            .textInputAutocapitalization(.never)
-                            .keyboardType(.emailAddress)
-                            .autocorrectionDisabled()
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .strokeBorder(Color(.separator), lineWidth: 1)
-                                    )
-                                    .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
-                            )
+                VStack(spacing: 12) {
+                    // Name fields (sign up only)
+                    if isCreatingAccount {
+                        HStack(spacing: 12) {
+                            TextField("First Name", text: $firstName)
+                                .font(.custom("Inter", size: 16))
+                                .textInputAutocapitalization(.words)
+                                .autocorrectionDisabled()
+                                .padding(.horizontal, 16)
+                                .frame(height: 52)
+                                .background(Color(hex: "#F3F3F3"))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                            TextField("Last Name", text: $lastName)
+                                .font(.custom("Inter", size: 16))
+                                .textInputAutocapitalization(.words)
+                                .autocorrectionDisabled()
+                                .padding(.horizontal, 16)
+                                .frame(height: 52)
+                                .background(Color(hex: "#F3F3F3"))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
                     }
-                    
-                    // Password Field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Password")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
-                        
-                        SecureField("Password", text: $password)
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .strokeBorder(Color(.separator), lineWidth: 1)
-                                    )
-                                    .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
-                            )
+
+                    // Email
+                    TextField("Email", text: $email)
+                        .font(.custom("Inter", size: 16))
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .autocorrectionDisabled()
+                        .padding(.horizontal, 16)
+                        .frame(height: 52)
+                        .background(Color(hex: "#F3F3F3"))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                    // Password
+                    ZStack(alignment: .trailing) {
+                        Group {
+                            if showPassword {
+                                TextField("Password", text: $password)
+                            } else {
+                                SecureField("Password", text: $password)
+                            }
+                        }
+                        .font(.custom("Inter", size: 16))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .padding(.horizontal, 16)
+                        .padding(.trailing, 44)
+                        .frame(height: 52)
+
+                        Button {
+                            showPassword.toggle()
+                        } label: {
+                            Image(systemName: showPassword ? "eye" : "eye.slash")
+                                .font(.system(size: 16))
+                                .foregroundStyle(Color(hex: "#6B6B6B"))
+                        }
+                        .padding(.trailing, 16)
                     }
+                    .frame(height: 52)
+                    .background(Color(hex: "#F3F3F3"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .padding(.horizontal, 32)
-                
+                .padding(.horizontal, 24)
+
                 // MARK: - Error Message
                 if let errorMessage {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.subheadline)
-                        
-                        Text(errorMessage)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                    }
-                    .foregroundStyle(.red)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.red.opacity(0.08))
-                    )
-                    .padding(.horizontal, 32)
-                    .padding(.top, 16)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    Text(errorMessage)
+                        .font(.custom("Inter", size: 13))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+                        .transition(.opacity)
                 }
-                
-                // MARK: - Primary Action Button
+
+                // MARK: - Continue Button
                 Button {
-                    Task {
-                        await submit()
-                    }
+                    Task { await submit() }
                 } label: {
                     HStack(spacing: 8) {
                         if isSubmitting {
-                            ProgressView()
-                                .tint(.white)
+                            ProgressView().tint(.white)
                         }
-                        
-                        Text(isCreatingAccount ? "Create Account" : "Sign In")
-                            .font(.headline)
+                        Text(isCreatingAccount ? "Create Account" : "Continue")
+                            .font(.custom("Inter", size: 16))
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue, .cyan],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                    )
+                    .frame(height: 52)
+                    .background(Color.black)
                     .foregroundStyle(.white)
-                    .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .disabled(email.isEmpty || password.isEmpty || isSubmitting)
-                .opacity((email.isEmpty || password.isEmpty || isSubmitting) ? 0.6 : 1.0)
-                .padding(.horizontal, 32)
-                .padding(.top, errorMessage == nil ? 32 : 16)
-                
-                // MARK: - Secondary Toggle Action
+                .disabled(!isFormReady)
+                .opacity(isFormReady ? 1.0 : 0.5)
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+
+                // MARK: - Forgot Password
+                if !isCreatingAccount {
+                    Button {
+                        // TODO: forgot password flow
+                    } label: {
+                        Text("Forgot password?")
+                            .font(.custom("Inter", size: 14))
+                            .fontWeight(.bold)
+                            .foregroundStyle(Color(hex: "#6B6B6B"))
+                    }
+                    .padding(.top, 20)
+                }
+
+                // MARK: - OR Divider
+                HStack(spacing: 16) {
+                    Rectangle()
+                        .fill(Color(hex: "#EEEEEE"))
+                        .frame(height: 1)
+                    Text("OR")
+                        .font(.custom("Inter", size: 12))
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color(hex: "#6B6B6B"))
+                        .tracking(2)
+                    Rectangle()
+                        .fill(Color(hex: "#EEEEEE"))
+                        .frame(height: 1)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 28)
+
+                // MARK: - Social Buttons
+                VStack(spacing: 12) {
+                    // Google
+                    Button {
+                        // TODO: Google sign-in
+                    } label: {
+                        HStack(spacing: 12) {
+                            GoogleLogoView()
+                            Text("Continue with Google")
+                                .font(.custom("Inter", size: 16))
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.black)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(Color(hex: "#F5F5F5"))
+                        .clipShape(Capsule())
+                    }
+
+                    // Apple
+                    Button {
+                        // TODO: Apple sign-in
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "apple.logo")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(.black)
+                            Text("Continue with Apple")
+                                .font(.custom("Inter", size: 16))
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.black)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(Color(hex: "#F5F5F5"))
+                        .clipShape(Capsule())
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 24)
+
+                // MARK: - Sign Up / Sign In Toggle
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isCreatingAccount.toggle()
                         errorMessage = nil
+                        firstName = ""
+                        lastName = ""
                     }
                 } label: {
-                    Text(isCreatingAccount 
-                         ? "Already have an account? **Sign in**"
-                         : "Need an account? **Sign up**")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                    Group {
+                        if isCreatingAccount {
+                            Text("Already have an account? ") + Text("Sign in").fontWeight(.semibold).foregroundColor(.black)
+                        } else {
+                            Text("Don't have an account? ") + Text("Sign up").fontWeight(.semibold).foregroundColor(.black)
+                        }
+                    }
+                    .font(.custom("Inter", size: 15))
+                    .foregroundStyle(Color(hex: "#6B6B6B"))
                 }
                 .disabled(isSubmitting)
-                .padding(.top, 24)
-                .padding(.horizontal, 32)
-                
-                // MARK: - Bottom Spacer
-                Spacer()
-                    .frame(height: 60)
+                .padding(.top, 32)
+                .padding(.bottom, 48)
             }
-            .frame(maxWidth: 500) // Max width for larger devices
-            .frame(maxWidth: .infinity) // Center on wide screens
+            .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.white)
+    }
+
+    private var isFormReady: Bool {
+        let base = !email.isEmpty && !password.isEmpty && !isSubmitting
+        if isCreatingAccount {
+            return base && !firstName.isEmpty && !lastName.isEmpty
+        }
+        return base
     }
 
     private func submit() async {
@@ -187,7 +270,7 @@ struct AuthScreen: View {
 
         do {
             if isCreatingAccount {
-                try await authService.signUp(email: email, password: password)
+                try await authService.signUp(email: email, password: password, firstName: firstName, lastName: lastName)
             } else {
                 try await authService.signIn(email: email, password: password)
             }
@@ -263,6 +346,44 @@ struct AuthScreen: View {
         // Fallback to original error message
         return error.localizedDescription
     }
+}
+
+// MARK: - Google Logo View
+
+private struct GoogleLogoView: View {
+    var body: some View {
+        // Standard 4-color Google "G" rendered as colored arc segments
+        ZStack {
+            ForEach(Array(googleSegments.enumerated()), id: \.offset) { _, seg in
+                Path { path in
+                    path.move(to: CGPoint(x: 10, y: 10))
+                    path.addArc(center: CGPoint(x: 10, y: 10),
+                                radius: 10,
+                                startAngle: .degrees(seg.start),
+                                endAngle: .degrees(seg.end),
+                                clockwise: false)
+                    path.closeSubpath()
+                }
+                .fill(seg.color)
+            }
+            // White inner circle to create ring effect
+            Circle()
+                .fill(Color(hex: "#F5F5F5"))
+                .frame(width: 12, height: 12)
+            Text("G")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(Color(red: 0.259, green: 0.522, blue: 0.957))
+        }
+        .frame(width: 20, height: 20)
+    }
+
+    private struct Segment { let start: Double; let end: Double; let color: Color }
+    private var googleSegments: [Segment] { [
+        Segment(start: -90, end:   0, color: Color(red: 0.259, green: 0.522, blue: 0.957)), // Blue
+        Segment(start:   0, end:  90, color: Color(red: 0.204, green: 0.659, blue: 0.325)), // Green
+        Segment(start:  90, end: 180, color: Color(red: 0.984, green: 0.737, blue: 0.020)), // Yellow
+        Segment(start: 180, end: 270, color: Color(red: 0.918, green: 0.263, blue: 0.208)), // Red
+    ] }
 }
 
 // MARK: - App Logo View

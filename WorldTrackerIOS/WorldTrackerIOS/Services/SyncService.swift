@@ -211,48 +211,19 @@ final class SyncService {
     }
 
     private func pushToCloud(_ visit: Visit) async throws {
-        // Use setVisited for the main data, including wantToVisit
-        try await cloudRepository.setVisited(
-            visit.countryId,
-            isVisited: visit.isVisited,
-            visitedDate: visit.visitedDate,
-            notes: visit.notes,
-            wantToVisit: visit.wantToVisit  // Pass the local value
-        )
-        
-        // Sync photos separately - don't fail the entire sync if photos fail
-        let cloudVisit = try? await cloudRepository.visit(for: visit.countryId)
-        let cloudPhotos = cloudVisit?.photos ?? []
-        
-        // Add any new photos that aren't in the cloud
-        for photo in visit.photos {
-            if !cloudPhotos.contains(where: { $0.id == photo.id }) {
-                try? await cloudRepository.addPhoto(visit.countryId, photo: photo)
-            }
-        }
-        
-        // Remove photos that were deleted locally
-        for cloudPhoto in cloudPhotos {
-            if !visit.photos.contains(where: { $0.id == cloudPhoto.id }) {
-                try? await cloudRepository.removePhoto(visit.countryId, photoId: cloudPhoto.id)
-            }
-        }
+        // Write all visit fields including photos in a single atomic Firestore write.
+        // The old approach called setVisited (which wiped the photos field) then added
+        // photos one-by-one with try?, causing photo loss on any network hiccup.
+        try await cloudRepository.setVisit(visit)
     }
 
     private func saveToLocal(_ visit: Visit) throws {
+        // Photos are local-only (not synced to Firestore), so always preserve whatever
+        // photos are already stored on this device.
+        var mergedVisit = visit
         let existingVisit = try? localRepository.visit(for: visit.countryId)
-        
-        if let existingVisit = existingVisit {
-            // Entity exists - preserve local photos if cloud has none, otherwise use cloud photos
-            var mergedVisit = visit
-            if visit.photos.isEmpty && !existingVisit.photos.isEmpty {
-                mergedVisit.photos = existingVisit.photos
-            }
-            try localRepository.upsert(mergedVisit)
-        } else {
-            // New visit - just save it (including cloud photos if any)
-            try localRepository.upsert(visit)
-        }
+        mergedVisit.photos = existingVisit?.photos ?? []
+        try localRepository.upsert(mergedVisit)
     }
 }
 

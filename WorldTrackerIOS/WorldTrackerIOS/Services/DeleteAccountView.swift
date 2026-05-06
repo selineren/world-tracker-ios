@@ -10,181 +10,273 @@ import SwiftUI
 struct DeleteAccountView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authService: AuthService
-    
+
     @State private var password = ""
     @State private var confirmationText = ""
     @State private var errorMessage: String?
     @State private var isDeleting = false
-    
+    @State private var showPassword = false
+
     // MARK: - Validation
-    
-    /// Check if the form is valid and ready for submission
-    /// Requires both password and exact "DELETE" confirmation
+
     private var isFormValid: Bool {
         !password.isEmpty &&
         confirmationText == "DELETE" &&
         !isDeleting
     }
-    
+
+    private var confirmationValid: Bool { confirmationText == "DELETE" }
+
     // MARK: - Body
-    
+
     var body: some View {
-        NavigationStack {
-            Form {
-                // MARK: - Warning Section
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.red)
-                            Text("This Action is Permanent")
-                                .font(.headline)
-                                .foregroundStyle(.red)
-                        }
-                        
-                        Text("Deleting your account will:")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label("Remove all your travel data", systemImage: "xmark.circle")
-                            Label("Delete your account permanently", systemImage: "xmark.circle")
-                            Label("Cannot be recovered or undone", systemImage: "xmark.circle")
-                        }
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 8)
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Delete Account")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(Color(hex: "#CCCCCC"))
                 }
-                
-                // MARK: - Password Section
-                Section {
-                    SecureField("Password", text: $password)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                } header: {
-                    Text("Verify Identity")
-                } footer: {
-                    Text("Enter your password to continue")
-                }
-                
-                // MARK: - Confirmation Section
-                Section {
-                    TextField("Type DELETE to confirm", text: $confirmationText)
-                        .autocorrectionDisabled()
-                } header: {
-                    Text("Type DELETE to Confirm")
-                } footer: {
-                    if confirmationText.isEmpty {
-                        Text("Type exactly: DELETE")
-                    } else if confirmationText != "DELETE" {
-                        Text("Must match exactly: DELETE")
-                            .foregroundStyle(.orange)
-                    } else {
-                        Text("Confirmation accepted")
-                            .foregroundStyle(.green)
-                    }
-                }
-                
-                // MARK: - Delete Button Section
-                Section {
-                    Button(role: .destructive) {
-                        Task {
-                            await deleteAccount()
-                        }
-                    } label: {
-                        HStack {
-                            if isDeleting {
-                                ProgressView()
-                                    .padding(.trailing, 8)
-                            }
-                            Text(isDeleting ? "Deleting Account..." : "Delete My Account")
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .disabled(!isFormValid)
-                }
-                
-                // MARK: - Error Section
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage)
-                            .foregroundStyle(.red)
-                    } header: {
-                        Text("Error")
-                    }
-                }
+                .buttonStyle(.plain)
+                .disabled(isDeleting)
             }
-            .navigationTitle("Delete Account")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            .padding(.bottom, 20)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+
+                    // MARK: Warning
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("THIS ACTION IS PERMANENT")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .tracking(0.8)
+                            .padding(.horizontal, 4)
+
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Deleting your account will:")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+                                .padding(.bottom, 12)
+
+                            Divider().padding(.horizontal, 16)
+
+                            warningRow(
+                                icon: "xmark.circle.fill",
+                                iconColor: Color(hex: "#F9234D"),
+                                iconBg: Color(hex: "#FFF0F5"),
+                                text: "Remove all your travel data"
+                            )
+
+                            Divider().padding(.horizontal, 16)
+
+                            warningRow(
+                                icon: "trash.fill",
+                                iconColor: Color(hex: "#F9234D"),
+                                iconBg: Color(hex: "#FFF0F5"),
+                                text: "Delete your account permanently"
+                            )
+
+                            Divider().padding(.horizontal, 16)
+
+                            warningRow(
+                                icon: "exclamationmark.triangle.fill",
+                                iconColor: Color(hex: "#E6A817"),
+                                iconBg: Color(hex: "#FFF9E6"),
+                                text: "Cannot be recovered or undone"
+                            )
+
+                            Spacer(minLength: 4)
+                        }
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
                     }
-                    .disabled(isDeleting)
+
+                    // MARK: Verify identity
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("VERIFY IDENTITY")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .tracking(0.8)
+                            .padding(.horizontal, 4)
+
+                        HStack(spacing: 12) {
+                            Group {
+                                if showPassword {
+                                    TextField("Password", text: $password)
+                                } else {
+                                    SecureField("Password", text: $password)
+                                }
+                            }
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+
+                            Button {
+                                showPassword.toggle()
+                            } label: {
+                                Image(systemName: showPassword ? "eye.fill" : "eye.slash.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(showPassword ? Color(hex: "#6B6B6B") : Color(hex: "#CCCCCC"))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 16)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+
+                        Text("Enter your password to continue")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(hex: "#BBBBBB"))
+                            .padding(.horizontal, 4)
+                    }
+
+                    // MARK: Confirm deletion
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("CONFIRM DELETION")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .tracking(0.8)
+                            .padding(.horizontal, 4)
+
+                        VStack(spacing: 0) {
+                            TextField("Type DELETE to confirm", text: $confirmationText)
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.characters)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 16)
+
+                            Divider().padding(.horizontal, 16)
+
+                            HStack(spacing: 8) {
+                                Image(systemName: confirmationValid ? "checkmark.circle.fill" : "info.circle.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(confirmationValid ? Color(hex: "#2E9E5B") : Color(hex: "#CCCCCC"))
+                                Text(confirmationValid ? "Confirmed" : "Type exactly: DELETE")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(confirmationValid ? Color(hex: "#2E9E5B") : Color(hex: "#9E9E9E"))
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                        }
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+                    }
+
+                    // MARK: Error
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.red)
+                            .padding(.horizontal, 4)
+                    }
+
+                    // MARK: Actions
+                    VStack(spacing: 14) {
+                        Button {
+                            Task { await deleteAccount() }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if isDeleting {
+                                    ProgressView()
+                                        .tint(.white)
+                                }
+                                Text(isDeleting ? "Deleting Account..." : "Delete My Account")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18)
+                            .background(isFormValid ? Color(hex: "#F9234D") : Color(hex: "#CCCCCC"))
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!isFormValid)
+
+                        Button { dismiss() } label: {
+                            Text("Cancel")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color(hex: "#9E9E9E"))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isDeleting)
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 32)
             }
         }
+        .background(Color(hex: "#F7F7F7"))
     }
-    
+
+    // MARK: - Warning Row
+
+    private func warningRow(icon: String, iconColor: Color, iconBg: Color, text: String) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(iconBg).frame(width: 36, height: 36)
+                Image(systemName: icon)
+                    .font(.system(size: 15))
+                    .foregroundStyle(iconColor)
+            }
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundStyle(Color(hex: "#1b1b1b"))
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
     // MARK: - Deletion Logic
-    
-    /// Execute the account deletion workflow
-    /// 1. Reauthenticate with password
-    /// 2. Delete Firestore data
-    /// 3. Delete Firebase Auth account
-    /// 4. Dismiss sheet after successful deletion
+
     private func deleteAccount() async {
-        // Clear previous error
         errorMessage = nil
         isDeleting = true
-        
-        defer {
-            isDeleting = false
-        }
-        
+        defer { isDeleting = false }
+
         do {
             try await authService.deleteAccount(currentPassword: password)
-            
-            // Dismiss the sheet immediately after successful deletion
-            // The auth state listener will handle sign-out and data cleanup in the background
             dismiss()
-            
         } catch let error as NSError {
-            // Map Firebase errors to user-friendly messages
             errorMessage = friendlyErrorMessage(from: error)
         }
     }
-    
+
     // MARK: - Error Handling
-    
-    /// Convert Firebase error codes to user-friendly messages for account deletion
-    /// - Parameter error: The error from Firebase Auth or Firestore
-    /// - Returns: A user-friendly error message
+
     private func friendlyErrorMessage(from error: NSError) -> String {
-        // Firebase Auth errors use domain "FIRAuthErrorDomain"
         if error.domain == "FIRAuthErrorDomain" {
             switch error.code {
-            case 17009: // ERROR_WRONG_PASSWORD
+            case 17009, 17004, 17999:
                 return "Password is incorrect. Please try again"
-            case 17004: // ERROR_INVALID_EMAIL (can mean wrong password in reauthentication)
-                return "Password is incorrect. Please try again"
-            case 17020: // ERROR_NETWORK_REQUEST_FAILED
+            case 17020:
                 return "Network error. Please check your connection and try again"
-            case 17999: // ERROR_INVALID_CREDENTIAL
-                return "Password is incorrect. Please try again"
-            case 17011: // ERROR_USER_NOT_FOUND
+            case 17011:
                 return "User session expired. Please sign in again"
-            case 17014: // ERROR_USER_MISMATCH
+            case 17014:
                 return "Authentication error. Please try again"
-            case 17995: // ERROR_REQUIRES_RECENT_LOGIN
+            case 17995:
                 return "Session expired. Please sign out and sign back in to delete your account"
             default:
-                // For unknown Firebase errors, check the error message
                 let message = error.localizedDescription.lowercased()
-                
-                // Parse common error patterns
                 if message.contains("credential") && (message.contains("malformed") || message.contains("expired")) {
                     return "Password is incorrect. Please try again"
                 } else if message.contains("network") || message.contains("connection") {
@@ -192,16 +284,14 @@ struct DeleteAccountView: View {
                 } else if message.contains("recent") && message.contains("login") {
                     return "Session expired. Please sign out and sign back in to delete your account"
                 } else {
-                    // Generic fallback for account deletion
                     return "Unable to delete account. Please try again or contact support"
                 }
             }
         } else if error.domain == "FIRFirestoreErrorDomain" {
-            // Firestore errors during visit data deletion
             switch error.code {
-            case 7: // Permission denied
+            case 7:
                 return "Permission error. Please try signing out and back in"
-            case 14: // Unavailable (often network/offline)
+            case 14:
                 return "Network error. Please check your connection and try again"
             default:
                 let message = error.localizedDescription.lowercased()
@@ -212,7 +302,6 @@ struct DeleteAccountView: View {
                 }
             }
         } else {
-            // For non-Firebase errors, check for network issues
             let message = error.localizedDescription.lowercased()
             if message.contains("network") || message.contains("internet") || message.contains("connection") {
                 return "Network error. Please check your connection and try again"

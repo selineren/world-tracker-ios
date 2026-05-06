@@ -1,48 +1,37 @@
 import SwiftUI
 
 // MARK: - Color tokens
-// Source of truth: "WorldTracker Colorful / Vibrant & Elegant" design direction.
-// Map: theme2.jsx V2 object.
 
 extension Color {
 
     // MARK: Surfaces
-    /// Warm off-white — primary app background (#F6F2EC)
-    static let appPaper  = Color(hex: "#F6F2EC")
-    /// Near-white secondary surface (#FFFDFA)
-    static let appPaper2 = Color(hex: "#FFFDFA")
-    /// Pure white card surface
+    static let appPaper  = Color(hex: "#F7F7F7")
+    static let appPaper2 = Color(hex: "#F3F3F3")
     static let appCard   = Color.white
 
     // MARK: Ink / Text
-    /// Primary text — navy-charcoal (#1A1B2E)
-    static let appInk    = Color(hex: "#1A1B2E")
-    /// Secondary text (#2F3150)
-    static let appInk2   = Color(hex: "#2F3150")
-    /// Tertiary / subdued text (#6A6E8A)
-    static let appInk3   = Color(hex: "#6A6E8A")
+    static let appInk    = Color(hex: "#1b1b1b")
+    static let appInk2   = Color(hex: "#6B6B6B")
+    static let appInk3   = Color(hex: "#9E9E9E")
 
-    // MARK: Borders / Dividers
-    /// Soft warm border / divider line (#E9E4DB)
-    static let appLine   = Color(hex: "#E9E4DB")
+    // MARK: Borders
+    static let appLine   = Color(hex: "#E2E2E2")
 
-    // MARK: Brand Palette
-    /// Electric rose — primary CTA accent (#EC1763)
-    static let appRose   = Color(hex: "#EC1763")
-    /// Sky blue — primary navy-blue (#5568AF)
-    static let appSky    = Color(hex: "#5568AF")
-    /// Pale aqua — surface tint (#CEEAEE)
-    static let appAqua   = Color(hex: "#CEEAEE")
-    /// Lime — high-energy highlight (#CDD629)
-    static let appLime   = Color(hex: "#CDD629")
-    /// Blush — soft surface / badge background (#F8C9DD)
-    static let appBlush  = Color(hex: "#F8C9DD")
-    /// Sunset orange — warm energy (#F37826)
-    static let appSunset = Color(hex: "#F37826")
+    // MARK: Visited (red — matches map fill)
+    static let appVisited    = Color(hex: "#F9234D")
+    static let appVisitedBg  = Color(hex: "#FFF0F5")
 
-    // MARK: Status
-    /// Success green (#1E7F4E)
-    static let appSuccess = Color(hex: "#1E7F4E")
+    // MARK: Wishlist (sky blue — matches map fill)
+    static let appWishlist   = Color(hex: "#4A90D9")
+    static let appWishlistBg = Color(hex: "#EAF6FE")
+
+    // MARK: Achievement (gold)
+    static let appGold   = Color(hex: "#E6A817")
+    static let appGoldBg = Color(hex: "#FFF9E6")
+
+    // MARK: Success / confirmed (green)
+    static let appSuccess   = Color(hex: "#2E9E5B")
+    static let appSuccessBg = Color(hex: "#F0FFF4")
 }
 
 // MARK: - Hex initializer

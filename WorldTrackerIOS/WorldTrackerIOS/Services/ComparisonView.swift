@@ -13,18 +13,12 @@ struct ComparisonView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var authService: AuthService
     @StateObject private var viewModel = ComparisonViewModel()
-    @State private var displayMode: DisplayMode = .list
-    @State private var mapZoomLevel: MapZoomLevel = .continent
     @State private var lastUserId: String? = nil
-    
-    enum DisplayMode {
-        case list
-        case map
-    }
-    
+
     var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
+                Color(hex: "#F7F7F7").ignoresSafeArea()
                 switch viewModel.state {
                 case .idle:
                     searchView
@@ -36,465 +30,502 @@ struct ComparisonView: View {
                     errorView(message: message)
                 }
             }
-            .navigationTitle("Travel Comparison")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if case .loaded = viewModel.state {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button { viewModel.resetToIdle() } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                        }
+                    }
+                }
+            }
             .onAppear {
-                // Check if user has changed (sign out / sign in / account switch)
                 let currentUserId = authService.user?.uid
-                
                 if lastUserId != currentUserId {
-                    // User changed - reset to idle state
                     lastUserId = currentUserId
                     viewModel.resetToIdle()
                 }
             }
             .onChange(of: appState.visits) { _, newVisits in
-                // Only reload if we have a comparison loaded
                 if case .loaded = viewModel.state {
                     viewModel.reloadComparison(yourVisits: newVisits)
                 }
             }
         }
     }
-    
-    // MARK: - State Views
-    
-    /// Initial state: Search for a user to compare with
+
+    private var navigationTitle: String {
+        if case .loaded = viewModel.state { return "Travel comparison" }
+        return "Compare"
+    }
+
+    // MARK: - Search (Idle) View
+
     private var searchView: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            // Icon and title
+        ScrollView {
             VStack(spacing: 16) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.blue)
-                
-                Text("Compare Travel Experiences")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Text("Enter a friend's email to see how your travels compare")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-            }
-            .padding(.bottom, 32)
-            
-            // Search field
-            VStack(spacing: 16) {
-                HStack(spacing: 12) {
-                    Image(systemName: "envelope.fill")
-                        .foregroundStyle(.secondary)
-                    
-                    TextField("friend@example.com", text: $viewModel.emailToCompare)
-                        .textFieldStyle(.plain)
-                        .autocapitalization(.none)
-                        .keyboardType(.emailAddress)
-                        .submitLabel(.search)
-                        .onSubmit {
-                            Task {
-                                await viewModel.searchUser(yourVisits: appState.visits)
+                heroEntryCard
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("FRIEND'S EMAIL")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .tracking(0.8)
+
+                    HStack(spacing: 12) {
+                        Image(systemName: "envelope")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                        TextField("friend@example.com", text: $viewModel.emailToCompare)
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+                            .autocorrectionDisabled()
+                            .submitLabel(.search)
+                            .onSubmit {
+                                Task { await viewModel.searchUser(yourVisits: appState.visits) }
                             }
-                        }
-                }
-                .padding()
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                
-                Button {
-                    Task {
-                        await viewModel.searchUser(yourVisits: appState.visits)
                     }
-                } label: {
-                    Text("Compare")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                    .padding(.horizontal, 16)
+                    .frame(height: 50)
+                    .background(Color(hex: "#F3F3F3"))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                    Button {
+                        Task { await viewModel.searchUser(yourVisits: appState.visits) }
+                    } label: {
+                        Text("Compare travels")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(Color(hex: "#1b1b1b"))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .disabled(viewModel.emailToCompare.isEmpty)
+                    .opacity(viewModel.emailToCompare.isEmpty ? 0.5 : 1)
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.emailToCompare.isEmpty)
-            }
-            .padding(.horizontal, 32)
-            
-            Spacer()
-            
-            // Privacy note
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
+                .padding(16)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+                .padding(.horizontal, 16)
+
+                HStack(spacing: 6) {
                     Image(systemName: "lock.fill")
-                        .font(.caption)
-                    Text("Privacy Protected")
-                        .font(.caption)
-                        .fontWeight(.medium)
+                        .font(.system(size: 11))
+                    Text("Only works with users who have enabled comparison in their privacy settings")
+                        .font(.system(size: 12))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .foregroundStyle(.secondary)
-                
-                Text("You can only compare with users who have enabled comparison in their account settings")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                .foregroundStyle(Color(hex: "#9E9E9E"))
+                .padding(.horizontal, 24)
+                .padding(.bottom, 32)
             }
-            .padding(.bottom, 32)
         }
     }
-    
-    /// Loading state: Fetching user data
+
+    private var heroEntryCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: -12) {
+                avatarCircle(initials: myInitials, bg: Color(hex: "#3A3A3A"))
+                avatarCircle(initials: "?", bg: Color(hex: "#1b1b1b"))
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Compare your travels\nwith anyone")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(.white)
+                Text("See countries you've both been to, where you'd love to go together, and trips worth planning.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.white.opacity(0.65))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(Color(hex: "#1b1b1b"))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    // MARK: - Loading View
+
     private var loadingView: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
+        VStack(spacing: 16) {
             ProgressView()
-                .scaleEffect(1.5)
-            
+                .scaleEffect(1.3)
             Text("Loading comparison...")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-                .padding(.top)
-            
-            Spacer()
+                .font(.system(size: 14))
+                .foregroundStyle(Color(hex: "#9E9E9E"))
         }
     }
-    
-    /// Error state: Something went wrong
+
+    // MARK: - Error View
+
     private func errorView(message: String) -> some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.red)
-            
-            Text("Unable to Compare")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text(message)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            
-            Button {
-                viewModel.resetToIdle()
-            } label: {
-                Text("Try Again")
-                    .font(.headline)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 12)
-            }
-            .buttonStyle(.borderedProminent)
-            .padding(.top)
-            
-            Spacer()
-        }
-    }
-    
-    /// Loaded state: Show comparison results
-    private var resultsView: some View {
-        VStack(spacing: 0) {
-            // Compared user info bar
-            if let profile = viewModel.comparedUserProfile {
-                comparedUserInfoBar(profile: profile)
-            }
-            
-            // Display Mode Picker (List vs Map)
-            Picker("Display Mode", selection: $displayMode) {
-                Text("List").tag(DisplayMode.list)
-                Text("Map").tag(DisplayMode.map)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.top, 8)
-            
-            // Mode Picker (Visited vs Wishlist)
-            Picker("Comparison Mode", selection: $viewModel.selectedMode) {
-                Text("Visited").tag(ComparisonMode.visited)
-                Text("Wishlist").tag(ComparisonMode.wishlist)
-            }
-            .pickerStyle(.segmented)
-            .padding()
-            
-            // Content based on display mode
-            if displayMode == .list {
-                listView
-            } else {
-                mapView
-            }
-        }
-    }
-    
-    /// Info bar showing who we're comparing with
-    private func comparedUserInfoBar(profile: UserProfile) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Comparing with")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text(profile.email)
-                    .font(.caption)
-                    .fontWeight(.medium)
-            }
-            
-            Spacer()
-            
-            Button {
-                viewModel.resetToIdle()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 12)
-        .background(.regularMaterial)
-    }
-    
-    // MARK: - List View
-    
-    private var listView: some View {
-        VStack(spacing: 0) {
-            // Stats Summary Card
-            statsCard
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-            
-            // Main Comparison List
-            List {
-                // Section 1: Yours
-                if !viewModel.currentComparison.yours.isEmpty {
-                    Section {
-                        ForEach(viewModel.yourCountries, id: \.id) { country in
-                            CountryRow(country: country, badge: .yours)
-                        }
-                    } header: {
-                        Text("Only You (\(viewModel.currentComparison.yours.count))")
-                    }
+        ScrollView {
+            VStack(spacing: 16) {
+                VStack(spacing: 16) {
+                    Text("😕")
+                        .font(.system(size: 48))
+                    Text("Something went wrong")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.white)
+                    Text(message)
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.white.opacity(0.65))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                
-                // Section 2: Shared
-                if !viewModel.currentComparison.shared.isEmpty {
-                    Section {
-                        ForEach(viewModel.sharedCountries, id: \.id) { country in
-                            CountryRow(country: country, badge: .shared)
-                        }
-                    } header: {
-                        Text("Both (\(viewModel.currentComparison.shared.count))")
-                    }
-                }
-                
-                // Section 3: Theirs
-                if !viewModel.currentComparison.theirs.isEmpty {
-                    Section {
-                        ForEach(viewModel.theirCountries, id: \.id) { country in
-                            CountryRow(country: country, badge: .theirs)
-                        }
-                    } header: {
-                        Text("Only Them (\(viewModel.currentComparison.theirs.count))")
-                    }
-                }
-                
-                // Empty state
-                if viewModel.currentComparison.totalUnique == 0 {
-                    Section {
-                        VStack(spacing: 12) {
-                            Image(systemName: "map")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.secondary)
-                            Text("No data to compare")
-                                .font(.headline)
-                            Text("Mark some countries as \(viewModel.selectedMode == .visited ? "visited" : "wishlisted") to see the comparison")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
+                .frame(maxWidth: .infinity)
+                .padding(24)
+                .background(Color(hex: "#1b1b1b"))
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
+
+                Button { viewModel.resetToIdle() } label: {
+                    Text("Try Again")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
+                        .frame(height: 52)
+                        .background(Color(hex: "#1b1b1b"))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 32)
+            }
+        }
+    }
+
+    // MARK: - Results View
+
+    private var resultsView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                if let profile = viewModel.comparedUserProfile {
+                    heroResultsCard(profile: profile)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
+                }
+
+                let wishlistShared = viewModel.wishlistComparison.shared.count
+                if wishlistShared > 0 {
+                    planTripCard(matchCount: wishlistShared)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                }
+
+                // Mode chips
+                HStack(spacing: 8) {
+                    modeChip("Visited", mode: .visited)
+                    modeChip("Wishlist", mode: .wishlist)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
+
+                if viewModel.currentComparison.totalUnique == 0 {
+                    Text("No \(viewModel.selectedMode == .visited ? "visited" : "wishlisted") countries to compare")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 32)
+                        .padding(.horizontal, 32)
+                        .multilineTextAlignment(.center)
+                } else {
+                    if !viewModel.sharedCountries.isEmpty {
+                        countrySection(label: "BOTH", countries: viewModel.sharedCountries, badge: .shared)
+                            .padding(.top, 20)
+                    }
+                    if !viewModel.yourCountries.isEmpty {
+                        countrySection(label: "ONLY YOU", countries: viewModel.yourCountries, badge: .yours)
+                            .padding(.top, 20)
+                    }
+                    if !viewModel.theirCountries.isEmpty {
+                        let friendName = viewModel.comparedUserProfile.map { friendShortName(from: $0) } ?? "THEM"
+                        countrySection(
+                            label: "ONLY \(friendName.uppercased())",
+                            countries: viewModel.theirCountries,
+                            badge: .theirs
+                        )
+                        .padding(.top, 20)
                     }
                 }
+
+                Spacer().frame(height: 32)
             }
-            .listStyle(.insetGrouped)
         }
     }
-    
-    // MARK: - Map View
-    
-    private var mapView: some View {
-        VStack(spacing: 0) {
-            // Stats Summary Card
-            statsCard
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-            
-            // Map Legend
-            mapLegend
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-            
-            // Map
-            ComparisonMapView(
-                comparison: viewModel.currentComparison,
-                zoomLevel: $mapZoomLevel,
-                onCountryTapped: { countryId in
-                    print("Tapped country: \(countryId)")
+
+    private func heroResultsCard(profile: UserProfile) -> some View {
+        let sharedCount = viewModel.visitedComparison.shared.count
+        let yourCount = viewModel.visitedComparison.yours.count
+        let theirCount = viewModel.visitedComparison.theirs.count
+        let friendName = friendShortName(from: profile)
+
+        return VStack(alignment: .leading, spacing: 16) {
+            // Top row: avatars + email pill
+            HStack(alignment: .center) {
+                HStack(spacing: -14) {
+                    // Your avatar: white circle, dark text
+                    Text(myInitials)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .frame(width: 44, height: 44)
+                        .background(Color.white)
+                        .clipShape(Circle())
+                    // Friend's avatar: blue circle, white text
+                    Text(friendInitials(from: profile))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Color(hex: "#6C8EFF"))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color(hex: "#1b1b1b"), lineWidth: 2))
                 }
-            )
-            .edgesIgnoringSafeArea(.bottom)
-        }
-    }
-    
-    // MARK: - Stats Card
-    
-    private var statsCard: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 20) {
-                StatItem(
-                    title: "Overlap",
-                    value: "\(Int(viewModel.currentComparison.overlapPercentage))%",
-                    color: .blue
-                )
-                
-                Divider()
-                    .frame(height: 30)
-                
-                StatItem(
-                    title: "Total Unique",
-                    value: "\(viewModel.currentComparison.totalUnique)",
-                    color: .purple
-                )
-                
-                Divider()
-                    .frame(height: 30)
-                
-                StatItem(
-                    title: "Shared",
-                    value: "\(viewModel.currentComparison.shared.count)",
-                    color: .green
-                )
+
+                Spacer()
+
+                // Email pill
+                Text(profile.email)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.85))
+                    .lineLimit(1)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.white.opacity(0.12))
+                    .clipShape(Capsule())
             }
-            .padding()
-        }
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-    
-    // MARK: - Map Legend
-    
-    private var mapLegend: some View {
-        HStack(spacing: 16) {
-            LegendItem(color: .green, label: "Both", count: viewModel.currentComparison.shared.count)
-            LegendItem(color: .blue, label: "You", count: viewModel.currentComparison.yours.count)
-            LegendItem(color: .orange, label: "Them", count: viewModel.currentComparison.theirs.count)
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-}
 
-// MARK: - Supporting Views
+            // "YOU & JOHN" label + big title
+            VStack(alignment: .leading, spacing: 6) {
+                Text("YOU & \(friendName.uppercased())")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.5))
+                    .tracking(0.5)
 
-private struct StatItem: View {
-    let title: String
-    let value: String
-    let color: Color
-    
-    var body: some View {
+                Text("\(sharedCount) countries in common")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(.white)
+                    .tracking(-0.3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // Divider
+            Rectangle()
+                .fill(Color.white.opacity(0.15))
+                .frame(height: 1)
+
+            // Stats row
+            HStack(spacing: 0) {
+                statColumn(value: "\(sharedCount)", label: "Together")
+                Rectangle().fill(Color.white.opacity(0.15)).frame(width: 1, height: 44)
+                statColumn(value: "\(yourCount)", label: "Only you")
+                Rectangle().fill(Color.white.opacity(0.15)).frame(width: 1, height: 44)
+                statColumn(value: "\(theirCount)", label: "Only \(friendName)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(Color(hex: "#111111"))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func statColumn(value: String, label: String) -> some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundStyle(color)
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-private struct LegendItem: View {
-    let color: Color
-    let label: String
-    let count: Int
-    
-    var body: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(color)
-                .frame(width: 12, height: 12)
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(.white)
             Text(label)
-                .font(.caption)
-            Text("(\(count))")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 12))
+                .foregroundStyle(Color.white.opacity(0.5))
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
-}
 
-private struct CountryRow: View {
-    let country: Country
-    let badge: ComparisonBadge
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Text(country.flagEmoji)
-                .font(.title2)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(country.name)
-                    .font(.body)
-                Text(country.continent.displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private func planTripCard(matchCount: Int) -> some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(hex: "#F3F3F3"))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "mappin.and.ellipse")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color(hex: "#1b1b1b"))
             }
-            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Plan a trip together")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                Text("\(matchCount) wishlist \(matchCount == 1 ? "match" : "matches")")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
+            }
             Spacer()
-            
-            badge.icon
-                .font(.caption)
-                .foregroundStyle(badge.color)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(badge.color.opacity(0.15))
-                .clipShape(Capsule())
+            Button {
+                viewModel.selectedMode = .wishlist
+            } label: {
+                Text("Plan")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 9)
+                    .background(Color(hex: "#1b1b1b"))
+                    .clipShape(Capsule())
+            }
         }
-        .padding(.vertical, 2)
+        .padding(14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+    }
+
+    private func modeChip(_ title: String, mode: ComparisonMode) -> some View {
+        Button { viewModel.selectedMode = mode } label: {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(viewModel.selectedMode == mode ? .white : Color(hex: "#6B6B6B"))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 8)
+                .background(viewModel.selectedMode == mode ? Color(hex: "#1b1b1b") : Color.white)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(viewModel.selectedMode == mode ? Color.clear : Color(hex: "#E2E2E2"), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func countrySection(label: String, countries: [Country], badge: ComparisonBadge) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color(hex: "#9E9E9E"))
+                .tracking(0.8)
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 8) {
+                ForEach(countries) { country in
+                    NavigationLink {
+                        CountryDetailScreen(country: country)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text(country.flagEmoji)
+                                .font(.system(size: 28))
+                                .frame(width: 40, height: 36)
+                            Text(country.name)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                            Spacer()
+                            Text(badge.label)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(badge.pillForeground)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(badge.pillBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Color(hex: "#CCCCCC"))
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 1)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func avatarCircle(initials: String, bg: Color) -> some View {
+        Text(initials)
+            .font(.system(size: 13, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 38, height: 38)
+            .background(bg)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(Color(hex: "#1b1b1b"), lineWidth: 2))
+    }
+
+    private var myInitials: String {
+        if let name = authService.user?.displayName, !name.trimmingCharacters(in: .whitespaces).isEmpty {
+            let parts = name.components(separatedBy: " ").filter { !$0.isEmpty }
+            if parts.count >= 2 {
+                return (parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
+            }
+            return String(parts[0].prefix(2)).uppercased()
+        }
+        guard let email = authService.user?.email else { return "ME" }
+        return emailInitials(email)
+    }
+
+    private func friendInitials(from profile: UserProfile) -> String {
+        if !profile.firstName.isEmpty {
+            let f = String(profile.firstName.prefix(1)).uppercased()
+            let l = String(profile.lastName.prefix(1)).uppercased()
+            return l.isEmpty ? f : f + l
+        }
+        return emailInitials(profile.email)
+    }
+
+    private func emailInitials(_ email: String) -> String {
+        let username = String(email.split(separator: "@").first ?? "?")
+        let parts = username.split(separator: ".")
+        if parts.count >= 2 {
+            return (String(parts[0].prefix(1)) + String(parts[1].prefix(1))).uppercased()
+        }
+        return String(username.prefix(2)).uppercased()
+    }
+
+    private func friendShortName(from profile: UserProfile) -> String {
+        if !profile.firstName.isEmpty {
+            return String(profile.firstName.prefix(10))
+        }
+        let username = String(profile.email.split(separator: "@").first ?? Substring(profile.email))
+        let first = String(username.split(separator: ".").first ?? Substring(username))
+        return first.prefix(10).capitalized
     }
 }
 
-// MARK: - Badge Type
+// MARK: - Comparison Badge
 
 enum ComparisonBadge {
     case yours
     case shared
     case theirs
-    
-    var icon: some View {
+
+    var label: String {
         switch self {
-        case .yours:
-            return Image(systemName: "person.fill")
-        case .shared:
-            return Image(systemName: "person.2.fill")
-        case .theirs:
-            return Image(systemName: "person.fill")
+        case .yours:   return "Only You"
+        case .shared:  return "Both"
+        case .theirs:  return "Only Them"
         }
     }
-    
-    var color: Color {
+
+    var pillForeground: Color {
         switch self {
-        case .yours:
-            return .blue
-        case .shared:
-            return .green
-        case .theirs:
-            return .orange
+        case .yours:   return Color(hex: "#1E7F4E")
+        case .shared:  return Color(hex: "#1b1b1b")
+        case .theirs:  return Color(hex: "#9E4E00")
+        }
+    }
+
+    var pillBackground: Color {
+        switch self {
+        case .yours:   return Color(hex: "#1E7F4E").opacity(0.1)
+        case .shared:  return Color(hex: "#1b1b1b").opacity(0.08)
+        case .theirs:  return Color(hex: "#F37826").opacity(0.15)
         }
     }
 }
@@ -504,273 +535,138 @@ enum ComparisonBadge {
 @MainActor
 final class ComparisonViewModel: ObservableObject {
     // MARK: - State Management
-    
+
     enum ViewState: Equatable {
-        case idle                    // Initial state - show search UI
-        case loading                 // Fetching user data
-        case loaded                  // Comparison data loaded successfully
-        case error(String)          // Error occurred
+        case idle
+        case loading
+        case loaded
+        case error(String)
     }
-    
+
     @Published var state: ViewState = .idle
     @Published var selectedMode: ComparisonMode = .visited
     @Published var emailToCompare: String = ""
     @Published private(set) var comparedUserProfile: UserProfile?
-    
-    // Comparison results (only populated in .loaded state)
+
     @Published private(set) var visitedComparison: TravelComparisonResult
     @Published private(set) var wishlistComparison: TravelComparisonResult
-    
-    // Services and data
+
     private let countryService = CountryDataService.shared
     private let profileRepository = FirestoreUserRepository()
     private let visitRepository = FirestoreVisitRepository()
     private var allCountries: [Country] = []
-    
-    // Current comparison based on selected mode
+
     var currentComparison: TravelComparisonResult {
         selectedMode == .visited ? visitedComparison : wishlistComparison
     }
-    
-    // Convert country IDs to Country objects
-    var yourCountries: [Country] {
-        getCountries(for: Array(currentComparison.yours))
-    }
-    
-    var sharedCountries: [Country] {
-        getCountries(for: Array(currentComparison.shared))
-    }
-    
-    var theirCountries: [Country] {
-        getCountries(for: Array(currentComparison.theirs))
-    }
-    
+
+    var yourCountries: [Country] { getCountries(for: Array(currentComparison.yours)) }
+    var sharedCountries: [Country] { getCountries(for: Array(currentComparison.shared)) }
+    var theirCountries: [Country] { getCountries(for: Array(currentComparison.theirs)) }
+
     init() {
-        // Initialize with empty comparisons
-        self.visitedComparison = TravelComparisonResult(
-            yours: [],
-            shared: [],
-            theirs: [],
-            mode: .visited
-        )
-        self.wishlistComparison = TravelComparisonResult(
-            yours: [],
-            shared: [],
-            theirs: [],
-            mode: .wishlist
-        )
-        
-        // Load countries
+        self.visitedComparison = TravelComparisonResult(yours: [], shared: [], theirs: [], mode: .visited)
+        self.wishlistComparison = TravelComparisonResult(yours: [], shared: [], theirs: [], mode: .wishlist)
         self.allCountries = countryService.loadCountries()
     }
-    
+
     // MARK: - Public Methods
-    
-    /// Search for a user by email and load their comparison data
+
     func searchUser(yourVisits: [String: Visit]) async {
         state = .loading
-        
-        // Create a timeout task (8 seconds like in AccountScreen)
+
         let timeoutTask = Task {
-            try? await Task.sleep(nanoseconds: 8_000_000_000) // 8 seconds
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
             if case .loading = state {
                 state = .error("Request timed out. Please check your internet connection and try again.")
-                
-                #if DEBUG
-                print("⏱️ Search operation timed out after 8 seconds")
-                #endif
             }
         }
-        
-        defer {
-            timeoutTask.cancel()
-        }
-        
+        defer { timeoutTask.cancel() }
+
         do {
-            // Step 1: Find the profile by email
             let profile: UserProfile?
             do {
                 profile = try await profileRepository.findProfileByEmail(emailToCompare)
             } catch {
-                // Cancel timeout before handling error
                 timeoutTask.cancel()
-                
-                // Network error occurred during profile lookup
-                let errorMessage = userFriendlyErrorMessage(from: error)
-                state = .error(errorMessage)
-                
-                #if DEBUG
-                print("❌ Network error during profile lookup: \(error)")
-                #endif
+                state = .error(userFriendlyErrorMessage(from: error))
                 return
             }
-            
-            // Check if profile was found
+
             guard let profile else {
                 timeoutTask.cancel()
                 state = .error("User not found or they have disabled comparison in their privacy settings")
                 return
             }
-            
-            #if DEBUG
-            print("✅ Found user profile: \(profile.email)")
-            #endif
-            
-            // Step 2: Fetch their visits
+
             let theirVisitsArray = try await visitRepository.allVisits(forUserId: profile.id)
-            
-            #if DEBUG
-            print("✅ Fetched \(theirVisitsArray.count) visits for user \(profile.email)")
-            #endif
-            
-            // Step 3: Convert to dictionary for comparison engine
             let theirVisitsDict = Dictionary(uniqueKeysWithValues: theirVisitsArray.map { ($0.countryId, $0) })
-            
-            // Step 4: Perform comparisons
-            visitedComparison = TravelComparisonEngine.compare(
-                yourVisits: yourVisits,
-                theirVisits: theirVisitsDict,
-                mode: .visited
-            )
-            
-            wishlistComparison = TravelComparisonEngine.compare(
-                yourVisits: yourVisits,
-                theirVisits: theirVisitsDict,
-                mode: .wishlist
-            )
-            
-            // Step 5: Update state
+
+            visitedComparison = TravelComparisonEngine.compare(yourVisits: yourVisits, theirVisits: theirVisitsDict, mode: .visited)
+            wishlistComparison = TravelComparisonEngine.compare(yourVisits: yourVisits, theirVisits: theirVisitsDict, mode: .wishlist)
+
             comparedUserProfile = profile
             state = .loaded
-            
-            // Cancel timeout on success
             timeoutTask.cancel()
-            
         } catch {
-            // Cancel timeout before handling error
             timeoutTask.cancel()
-            
-            // Detect and handle network errors specifically
-            let errorMessage = userFriendlyErrorMessage(from: error)
-            state = .error(errorMessage)
-            
-            #if DEBUG
-            print("❌ Failed to fetch visits: \(error)")
-            #endif
+            state = .error(userFriendlyErrorMessage(from: error))
         }
     }
-    
-    /// Reload the comparison with updated visit data (called when user's visits change)
+
     func reloadComparison(yourVisits: [String: Visit]) {
         guard case .loaded = state, let profile = comparedUserProfile else { return }
-        
-        // Re-fetch the other user's visits and re-compare
         Task {
             do {
                 let theirVisitsArray = try await visitRepository.allVisits(forUserId: profile.id)
                 let theirVisitsDict = Dictionary(uniqueKeysWithValues: theirVisitsArray.map { ($0.countryId, $0) })
-                
-                // Perform comparisons
-                visitedComparison = TravelComparisonEngine.compare(
-                    yourVisits: yourVisits,
-                    theirVisits: theirVisitsDict,
-                    mode: .visited
-                )
-                
-                wishlistComparison = TravelComparisonEngine.compare(
-                    yourVisits: yourVisits,
-                    theirVisits: theirVisitsDict,
-                    mode: .wishlist
-                )
-                
-                #if DEBUG
-                print("✅ Reloaded comparison with updated data")
-                #endif
-                
+                visitedComparison = TravelComparisonEngine.compare(yourVisits: yourVisits, theirVisits: theirVisitsDict, mode: .visited)
+                wishlistComparison = TravelComparisonEngine.compare(yourVisits: yourVisits, theirVisits: theirVisitsDict, mode: .wishlist)
             } catch {
                 #if DEBUG
                 print("⚠️ Failed to reload comparison: \(error)")
                 #endif
-                // Don't change state - keep showing old data
             }
         }
     }
-    
-    /// Reset to idle state (ready to search for a new user)
+
     func resetToIdle() {
         state = .idle
         emailToCompare = ""
         comparedUserProfile = nil
-        
-        // Clear comparison data
-        visitedComparison = TravelComparisonResult(
-            yours: [],
-            shared: [],
-            theirs: [],
-            mode: .visited
-        )
-        wishlistComparison = TravelComparisonResult(
-            yours: [],
-            shared: [],
-            theirs: [],
-            mode: .wishlist
-        )
+        visitedComparison = TravelComparisonResult(yours: [], shared: [], theirs: [], mode: .visited)
+        wishlistComparison = TravelComparisonResult(yours: [], shared: [], theirs: [], mode: .wishlist)
     }
-    
+
     // MARK: - Error Handling
-    
-    /// Convert errors into user-friendly messages, detecting network issues
+
     private func userFriendlyErrorMessage(from error: Error) -> String {
         let nsError = error as NSError
-        
-        // Check for network-related error codes
-        // NSURLErrorDomain codes: https://developer.apple.com/documentation/foundation/nsurlerrordomain
         if nsError.domain == NSURLErrorDomain {
             switch nsError.code {
-            case NSURLErrorNotConnectedToInternet:
-                return "No internet connection. Please check your network and try again."
-            case NSURLErrorNetworkConnectionLost:
-                return "Network connection was lost. Please try again."
+            case NSURLErrorNotConnectedToInternet:  return "No internet connection. Please check your network and try again."
+            case NSURLErrorNetworkConnectionLost:   return "Network connection was lost. Please try again."
             case NSURLErrorCannotConnectToHost, NSURLErrorCannotFindHost:
                 return "Unable to connect to server. Please check your internet connection."
-            case NSURLErrorTimedOut:
-                return "Connection timed out. Please try again."
-            case NSURLErrorDNSLookupFailed:
-                return "Network error: DNS lookup failed. Please check your connection."
-            default:
-                return "Network error. Please check your connection and try again."
+            case NSURLErrorTimedOut:                return "Connection timed out. Please try again."
+            default:                                return "Network error. Please check your connection and try again."
             }
         }
-        
-        // Check for Firebase-specific network errors
-        // Firebase Firestore error domain
         if nsError.domain == "FIRFirestoreErrorDomain" {
             switch nsError.code {
-            case 14: // UNAVAILABLE - network issue or server unavailable
-                return "Unable to connect to the server. Please check your internet connection and try again."
-            case 4: // DEADLINE_EXCEEDED - operation timeout
-                return "Request timed out. Please check your connection and try again."
-            case 7: // PERMISSION_DENIED
-                return "Permission denied. The user may have changed their privacy settings."
-            default:
-                break
+            case 14: return "Unable to connect to the server. Please check your internet connection and try again."
+            case 4:  return "Request timed out. Please check your connection and try again."
+            case 7:  return "Permission denied. The user may have changed their privacy settings."
+            default: break
             }
         }
-        
-        // Default error message with original description
         return "Failed to load user: \(error.localizedDescription)"
     }
-    
+
     // MARK: - Helpers
-    
+
     private func getCountries(for countryIds: [String]) -> [Country] {
         let countryDict = Dictionary(uniqueKeysWithValues: allCountries.map { ($0.id, $0) })
         return countryIds.compactMap { countryDict[$0] }.sorted { $0.name < $1.name }
     }
-}
-
-// MARK: - Preview
-
-#Preview {
-    ComparisonView()
 }

@@ -11,10 +11,10 @@ import FirebaseAuth
 struct RootTabView: View {
     @EnvironmentObject private var authService: AuthService
     @EnvironmentObject private var appState: AppState
-    
+
     // Track selected tab - always starts on Map when view is created
     @State private var selectedTab: Tab = .map
-    
+
     enum Tab {
         case map
         case countries
@@ -25,12 +25,15 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            MapScreen()
-                .tabItem {
-                    Label("Map", systemImage: "map")
-                }
-                .tag(Tab.map)
-            
+            MapScreen(
+                onNavigateToStats: { selectedTab = .stats },
+                onNavigateToCountries: { selectedTab = .countries }
+            )
+            .tabItem {
+                Label("Map", systemImage: "map")
+            }
+            .tag(Tab.map)
+
             CountriesScreen()
                 .tabItem {
                     Label("Countries", systemImage: "list.bullet")
@@ -42,7 +45,7 @@ struct RootTabView: View {
                     Label("Stats", systemImage: "chart.bar")
                 }
                 .tag(Tab.stats)
-            
+
             // Travel Comparison
             ComparisonView()
                 .tabItem {
@@ -61,10 +64,10 @@ struct RootTabView: View {
             // Ensure tab bar is always visible and properly styled
             let appearance = UITabBarAppearance()
             appearance.configureWithDefaultBackground()
-            
+
             UITabBar.appearance().standardAppearance = appearance
             UITabBar.appearance().scrollEdgeAppearance = appearance
-            
+
             #if DEBUG
             print("🗺️ RootTabView appeared with signInCounter=\(authService.signInCounter), selectedTab=\(selectedTab)")
             #endif

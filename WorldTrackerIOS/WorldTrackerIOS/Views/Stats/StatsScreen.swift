@@ -11,36 +11,21 @@ import Combine
 struct StatsScreen: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var vm = StatsViewModel()
-    
-    init() {
-        #if DEBUG
-        print("🎨 StatsScreen initialized")
-        #endif
-    }
-    
-    // MARK: - Computed stats
-    
+    @State private var selectedAchievement: Achievement?
+
+    // MARK: - Computed properties
+
     private var visitedVisits: [Visit] {
-        appState.visits.values
-            .filter { $0.isVisited }
+        appState.visits.values.filter { $0.isVisited }
     }
-    
+
     private var wantToVisitVisits: [Visit] {
-        appState.visits.values
-            .filter { $0.wantToVisit }
+        appState.visits.values.filter { $0.wantToVisit }
     }
-    
-    private var totalCountriesCount: Int {
-        vm.countries.count
-    }
-    
-    private var visitedCountriesCount: Int {
-        visitedVisits.count
-    }
-    
-    private var wantToVisitCount: Int {
-        wantToVisitVisits.count
-    }
+
+    private var totalCountriesCount: Int { vm.countries.count }
+    private var visitedCountriesCount: Int { visitedVisits.count }
+    private var wantToVisitCount: Int { wantToVisitVisits.count }
 
     private var totalPhotosCount: Int {
         visitedVisits.reduce(0) { $0 + $1.photos.count }
@@ -49,698 +34,594 @@ struct StatsScreen: View {
     private var currentYear: Int {
         Calendar.current.component(.year, from: Date())
     }
-    
+
     private var visitedPercentage: Double {
         guard totalCountriesCount > 0 else { return 0 }
         return Double(visitedCountriesCount) / Double(totalCountriesCount) * 100
     }
-    
+
     private var achievements: [Achievement] {
         vm.achievements(from: appState.visits)
     }
-    
-    private var achievementSummary: (total: Int, unlocked: Int) {
-        AchievementEngine.achievementSummary(achievements)
-    }
-    
+
     private var visitedCountries: [Country] {
-        let visitedIDs = Set(visitedVisits.map { $0.countryId })
-        return vm.countries.filter { visitedIDs.contains($0.id) }
+        let ids = Set(visitedVisits.map { $0.countryId })
+        return vm.countries.filter { ids.contains($0.id) }
     }
-    
+
     private var wantToVisitCountries: [Country] {
-        let wantToVisitIDs = Set(wantToVisitVisits.map { $0.countryId })
-        return vm.countries.filter { wantToVisitIDs.contains($0.id) }
+        let ids = Set(wantToVisitVisits.map { $0.countryId })
+        return vm.countries.filter { ids.contains($0.id) }
     }
-    
+
     private var visitedThisYear: [(country: Country, date: Date)] {
         let calendar = Calendar.current
-        let currentYear = calendar.component(.year, from: Date())
+        let year = calendar.component(.year, from: Date())
         let byId = Dictionary(uniqueKeysWithValues: vm.countries.map { ($0.id, $0) })
-        
         return visitedVisits
             .compactMap { visit -> (country: Country, date: Date)? in
-                // Get country first
-                guard let country = byId[visit.countryId] else {
-                    return nil
-                }
-                
-                // For visited countries, use visitedDate (should always exist for visited)
-                // If somehow missing, fall back to updatedAt to avoid losing the data
-                guard let date = visit.visitedDate ?? (visit.isVisited ? visit.updatedAt : nil) else {
-                    return nil
-                }
-                
-                // Check if the date is in the current year
-                guard calendar.component(.year, from: date) == currentYear else {
-                    return nil
-                }
-                
+                guard let country = byId[visit.countryId] else { return nil }
+                guard let date = visit.visitedDate ?? (visit.isVisited ? visit.updatedAt : nil) else { return nil }
+                guard calendar.component(.year, from: date) == year else { return nil }
                 return (country: country, date: date)
             }
             .sorted { $0.date > $1.date }
     }
-    
-    private var visitedByContinent: [(continent: Continent, visited: Int, wantToVisit: Int, total: Int, percentage: Double)] {
+
+    private var visitedByContinent: [(continent: Continent, visited: Int, total: Int, percentage: Double)] {
         let grouped = Dictionary(grouping: vm.countries, by: { $0.continent })
-        
-        return Continent.allCases.map { continent in
+        let visitedIDs = Set(visitedVisits.map { $0.countryId })
+        return Continent.allCases.compactMap { continent in
             let all = grouped[continent] ?? []
-            let visitedIDs = Set(visitedVisits.map { $0.countryId })
-            let wantToVisitIDs = Set(wantToVisitVisits.map { $0.countryId })
+            guard !all.isEmpty else { return nil }
             let visited = all.filter { visitedIDs.contains($0.id) }.count
-            let wantToVisit = all.filter { wantToVisitIDs.contains($0.id) }.count
-            let percentage = all.count > 0 ? Double(visited) / Double(all.count) * 100 : 0
-            return (continent: continent, visited: visited, wantToVisit: wantToVisit, total: all.count, percentage: percentage)
+            let pct = Double(visited) / Double(all.count) * 100
+            return (continent: continent, visited: visited, total: all.count, percentage: pct)
         }
-        .filter { $0.total > 0 }
         .sorted { $0.percentage > $1.percentage }
     }
-    
+
     private var recentVisits: [(country: Country, date: Date?)] {
         let byId = Dictionary(uniqueKeysWithValues: vm.countries.map { ($0.id, $0) })
-        
         return visitedVisits
             .compactMap { visit in
                 guard let country = byId[visit.countryId] else { return nil }
                 return (country: country, date: visit.visitedDate)
             }
             .sorted {
-                // visits with date first, newest first
                 switch ($0.date, $1.date) {
-                case let (d0?, d1?):
-                    return d0 > d1
-                case (nil, _?):
-                    return false
-                case (_?, nil):
-                    return true
-                case (nil, nil):
-                    return $0.country.name < $1.country.name
+                case let (d0?, d1?): return d0 > d1
+                case (nil, _?): return false
+                case (_?, nil): return true
+                case (nil, nil): return $0.country.name < $1.country.name
                 }
             }
     }
-    
-    // MARK: - Design system views
 
-    private var continentsVisitedCount: Int {
-        visitedByContinent.filter { $0.visited > 0 }.count
-    }
-
-    private var statsHeader: some View {
-        ZStack(alignment: .topLeading) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Your journey").eyebrowStyle()
-                HStack(spacing: 0) {
-                    Text("The ")
-                        .font(.system(size: 44, weight: .regular, design: .serif))
-                        .foregroundStyle(Color.appInk)
-                    Text("numbers")
-                        .font(AppTypography.displayLarge)
-                        .foregroundStyle(Color.appSky)
-                }
-            }
-
-            // Confetti decorations
-            Circle().fill(Color.appRose).frame(width: 9, height: 9)
-                .offset(x: 212, y: 8)
-            Text("▶")
-                .font(.system(size: 11, weight: .bold)).foregroundStyle(Color.appLime)
-                .offset(x: 178, y: 52)
-            Text("★")
-                .font(.system(size: 18)).foregroundStyle(Color.appSunset)
-                .offset(x: 228, y: 60)
-            ConfettiWave()
-                .stroke(Color.appRose, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                .frame(width: 28, height: 20)
-                .offset(x: 244, y: 22)
-            Text("◀")
-                .font(.system(size: 13, weight: .bold)).foregroundStyle(Color.appInk)
-                .offset(x: 272, y: 74)
-            Text("★")
-                .font(.system(size: 12)).foregroundStyle(Color.appLime)
-                .offset(x: 213, y: 108)
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
-
-    private var heroCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("You've explored")
-                .font(AppTypography.eyebrow)
-                .fontWeight(.bold)
-                .tracking(2.0)
-                .textCase(.uppercase)
-                .foregroundStyle(Color.white.opacity(0.82))
-                .padding(.bottom, 6)
-
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("\(visitedCountriesCount)")
-                    .font(AppTypography.displayHero)
-                    .foregroundStyle(Color.white)
-
-                Text("of \(totalCountriesCount)")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.85))
-            }
-            .padding(.bottom, 8)
-
-            Text("\(visitedPercentage, specifier: "%.1f")% of the world · \(continentsVisitedCount) continents")
-                .font(AppTypography.bodySmall)
-                .fontWeight(.medium)
-                .foregroundStyle(Color.white.opacity(0.9))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .background(
-            ZStack(alignment: .bottomTrailing) {
-                Color.appRose
-                Text("\(Int(visitedPercentage))%")
-                    .font(AppTypography.displayHero)
-                    .italic()
-                    .foregroundStyle(Color.white.opacity(0.09))
-                    .padding(.trailing, -12)
-                    .padding(.bottom, -28)
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 26))
-        .shadow(color: Color.appRose.opacity(0.32), radius: 28, x: 0, y: 10)
-    }
-
-    // MARK: - UI
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                List {
-                    // MARK: - Stats Header + Hero Card + Mini Stats
-                    Section {
-                        VStack(alignment: .leading, spacing: 4) {
-                            statsHeader
-                                .padding(.horizontal, 16)
-                            heroCard
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 14)
-                            HStack(spacing: 10) {
-                                MiniStatCard(
-                                    value: "\(visitedThisYear.count)",
-                                    label: "in \(currentYear)",
-                                    background: Color.appLime,
-                                    foreground: Color.appInk
-                                )
-                                MiniStatCard(
-                                    value: "\(wantToVisitCount)",
-                                    label: "on wishlist",
-                                    background: Color.appAqua,
-                                    foreground: Color.appInk
-                                )
-                                MiniStatCard(
-                                    value: "\(totalPhotosCount)",
-                                    label: "photos",
-                                    background: Color.appSunset,
-                                    foreground: .white
-                                )
-                            }
-                            .padding(.horizontal, 16)
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    overviewSection
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
+
+                    summarySection
+                        .padding(.horizontal, 16)
                         .padding(.top, 24)
-                        .listRowBackground(Color.appPaper)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                    }
-                    
-                    // MARK: - Badges
-                    Section {
-                        Text("Badges").eyebrowStyle()
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-                            .listRowBackground(Color.appPaper)
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets())
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach(achievements) { achievement in
-                                    AchievementCard(achievement: achievement)
-                                }
-                            }
-                            .padding(.vertical, 6)
-                            .padding(.horizontal, 16)
-                        }
-                        .listRowBackground(Color.appPaper)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
-                    }
 
-                    // MARK: - Travel Wishlist
                     if !wantToVisitCountries.isEmpty {
-                        Section {
-                            Text("Travel Wishlist").eyebrowStyle()
-                                .padding(.horizontal, 16)
-                                .padding(.top, 8)
-                                .listRowBackground(Color.appPaper)
-                                .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets())
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(wantToVisitCountries) { country in
-                                        NavigationLink {
-                                            CountryDetailScreen(country: country)
-                                        } label: {
-                                            VStack(spacing: 4) {
-                                                ZStack(alignment: .topTrailing) {
-                                                    Text(country.flagEmoji)
-                                                        .font(.system(size: 32))
-                                                    Image(systemName: "star.fill")
-                                                        .font(.caption2)
-                                                        .foregroundStyle(.orange)
-                                                        .offset(x: 4, y: -4)
-                                                }
-                                                Text(country.name)
-                                                    .font(.caption2)
-                                                    .lineLimit(1)
-                                                    .frame(width: 70)
-                                            }
-                                            .padding(8)
-                                            .background(.thinMaterial)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                            .listRowBackground(Color.appPaper)
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
-                        }
+                        wishlistSection
+                            .padding(.top, 24)
                     }
 
-                    // MARK: - Visited by Continent
-                    Section {
-                        Text("Progress by Continent").eyebrowStyle()
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-                            .listRowBackground(Color.appPaper)
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets())
-                        LazyVGrid(
-                            columns: [GridItem(.flexible(), spacing: 12),
-                                      GridItem(.flexible(), spacing: 12)],
-                            spacing: 12
-                        ) {
-                            ForEach(visitedByContinent, id: \.continent.id) { item in
-                                let accent = continentAccent(for: item.continent)
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Text(item.continent.displayName)
-                                        .font(AppTypography.displaySmall)
-                                        .foregroundStyle(Color.appInk)
-                                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                        Text("\(item.visited)")
-                                            .font(AppTypography.statLarge)
-                                            .foregroundStyle(Color.appInk)
-                                        Text("/ \(item.total)")
-                                            .font(AppTypography.bodySmall)
-                                            .foregroundStyle(Color.appInk3)
-                                    }
-                                    continentDots(visited: item.visited, total: item.total, accent: accent)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                                .padding(14)
-                                .background(accent.opacity(0.13))
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                                .aspectRatio(1, contentMode: .fit)
-                            }
-                        }
-                        .listRowBackground(Color.appPaper)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                    }
-
-                    // MARK: - Visited Countries
                     if !visitedCountries.isEmpty {
-                        Section {
-                            Text("Visited Countries").eyebrowStyle()
-                                .padding(.horizontal, 16)
-                                .padding(.top, 8)
-                                .listRowBackground(Color.appPaper)
-                                .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets())
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 10) {
-                                    ForEach(Array(visitedCountries.enumerated()), id: \.element.id) { index, country in
-                                        let chipColors: [Color] = [.appRose, .appSky, .appLime, .appSunset, .appAqua, .appBlush]
-                                        let accent = chipColors[index % chipColors.count]
-                                        NavigationLink {
-                                            CountryDetailScreen(country: country)
-                                        } label: {
-                                            HStack(spacing: 7) {
-                                                Text(country.flagEmoji)
-                                                    .font(.system(size: 22))
-                                                Text(country.name)
-                                                    .font(AppTypography.bodySmall)
-                                                    .fontWeight(.medium)
-                                                    .foregroundStyle(Color.appInk)
-                                                    .lineLimit(1)
-                                            }
-                                            .padding(.vertical, 10)
-                                            .padding(.horizontal, 14)
-                                            .frame(maxWidth: 160)
-                                            .background(Color.appCard)
-                                            .clipShape(Capsule())
-                                            .overlay(Capsule().stroke(accent, lineWidth: 2))
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 14)
-                            }
-                            .listRowBackground(Color.appPaper)
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
-                        }
+                        visitedCountriesSection
+                            .padding(.top, 24)
                     }
 
-                    // MARK: - Fresh Memories
+                    continentProgressSection
+                        .padding(.horizontal, 16)
+                        .padding(.top, 24)
+
+                    badgesSection
+                        .padding(.top, 24)
+
                     if !recentVisits.isEmpty {
-                        Section {
-                            Text("Fresh Memories").eyebrowStyle()
-                                .padding(.horizontal, 16)
-                                .padding(.top, 8)
-                                .listRowBackground(Color.appPaper)
-                                .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets())
-                            ForEach(
-                                Array(recentVisits.prefix(8).enumerated()),
-                                id: \.element.country.id
-                            ) { index, item in
-                                ZStack(alignment: .trailing) {
-                                    NavigationLink {
-                                        CountryDetailScreen(country: item.country)
-                                    } label: { EmptyView() }
-                                        .opacity(0)
-                                    HStack(spacing: 12) {
-                                        Text(item.country.flagEmoji)
-                                            .font(.system(size: 28))
-                                            .frame(width: 48, height: 48)
-                                            .background(Color.white)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                            .shadow(color: Color.appInk.opacity(0.07), radius: 4, x: 0, y: 2)
-                                        VStack(alignment: .leading, spacing: 3) {
-                                            Text(item.country.name)
-                                                .font(AppTypography.displaySmall)
-                                                .foregroundStyle(Color.appInk)
-                                            HStack(spacing: 4) {
-                                                Text(formattedDate(item.date))
-                                                    .foregroundStyle(memoryCardAccent(at: index))
-                                                let photos = photoCount(for: item.country.id)
-                                                if photos > 0 {
-                                                    Text("·")
-                                                        .foregroundStyle(Color.appInk3)
-                                                    Text("\(photos) photos")
-                                                        .foregroundStyle(Color.appInk3)
-                                                }
-                                            }
-                                            .font(AppTypography.bodySmall)
-                                            .fontWeight(.medium)
-                                        }
-                                        Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption2)
-                                            .fontWeight(.semibold)
-                                            .foregroundStyle(Color.appInk3)
-                                    }
+                        recentMemoriesSection
+                            .padding(.horizontal, 16)
+                            .padding(.top, 24)
+                    }
+
+                    Spacer().frame(height: 32)
+                }
+            }
+            .background(Color(hex: "#F7F7F7"))
+            .navigationTitle("Stats")
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(item: $selectedAchievement) { achievement in
+                BadgeDetailSheet(achievement: achievement)
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+                    .presentationCornerRadius(24)
+            }
+        }
+    }
+
+    // MARK: - Overview
+
+    private var overviewSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("Overview")
+            VStack(alignment: .leading, spacing: 10) {
+                Text("\(visitedCountriesCount) / \(totalCountriesCount) Countries")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .tracking(-0.5)
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color(hex: "#EEEEEE"))
+                            .frame(height: 4)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color(hex: "#1b1b1b"))
+                            .frame(
+                                width: max(geo.size.width * (visitedPercentage / 100), visitedCountriesCount > 0 ? 6 : 0),
+                                height: 4
+                            )
+                    }
+                }
+                .frame(height: 4)
+
+                Text(String(format: "%.1f%% of the world", visitedPercentage))
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
+            }
+            .padding(16)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+        }
+    }
+
+    // MARK: - Summary
+
+    private var summarySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("Summary")
+            HStack(spacing: 12) {
+                summaryCard(
+                    value: "\(visitedThisYear.count)",
+                    label: "Visited this year",
+                    sublabel: "Countries"
+                )
+                summaryCard(
+                    value: "\(wantToVisitCount)",
+                    label: "On Wishlist",
+                    sublabel: "Planning"
+                )
+            }
+        }
+    }
+
+    private func summaryCard(value: String, label: String, sublabel: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(size: 40, weight: .bold))
+                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .tracking(-0.5)
+            Text(label)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .padding(.top, 2)
+            Text(sublabel)
+                .font(.system(size: 12))
+                .foregroundStyle(Color(hex: "#9E9E9E"))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+    }
+
+    // MARK: - Wishlist
+
+    private var wishlistSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("Wishlist")
+                .padding(.horizontal, 16)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(wantToVisitCountries) { country in
+                        NavigationLink {
+                            CountryDetailScreen(country: country)
+                        } label: {
+                            VStack(spacing: 6) {
+                                ZStack(alignment: .topTrailing) {
+                                    Text(country.flagEmoji)
+                                        .font(.system(size: 34))
+                                        .frame(width: 50, height: 50)
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(Color(hex: "#4A90D9"))
+                                        .offset(x: 2, y: -2)
                                 }
-                                .contentShape(Rectangle())
-                                .padding(14)
-                                .background(memoryCardBG(at: index))
-                                .clipShape(RoundedRectangle(cornerRadius: 18))
-                                .listRowBackground(Color.appPaper)
-                                .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                .padding(10)
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+
+                                Text(country.name)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                                    .lineLimit(1)
+                            }
+                            .frame(width: 70)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+    }
+
+    // MARK: - Visited Countries
+
+    private var visitedCountriesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("All visited countries")
+                .padding(.horizontal, 16)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(visitedCountries) { country in
+                        NavigationLink {
+                            CountryDetailScreen(country: country)
+                        } label: {
+                            VStack(spacing: 6) {
+                                Text(country.flagEmoji)
+                                    .font(.system(size: 34))
+                                    .frame(width: 50, height: 50)
+                                    .padding(10)
+                                    .background(Color.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+
+                                Text(country.name)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                                    .lineLimit(1)
+                            }
+                            .frame(width: 70)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+    }
+
+    // MARK: - Continent Progress
+
+    private var continentProgressSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("Continent progress")
+            VStack(spacing: 0) {
+                ForEach(Array(visitedByContinent.enumerated()), id: \.element.continent.id) { index, item in
+                    if index > 0 {
+                        Divider()
+                            .padding(.horizontal, 16)
+                    }
+                    HStack(spacing: 12) {
+                        Text(continentShortName(item.continent))
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .frame(width: 84, alignment: .leading)
+
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color(hex: "#EEEEEE"))
+                                    .frame(height: 6)
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color(hex: "#1b1b1b"))
+                                    .frame(
+                                        width: max(geo.size.width * (item.percentage / 100), item.visited > 0 ? 6 : 0),
+                                        height: 6
+                                    )
                             }
                         }
-                    }
+                        .frame(height: 6)
 
-                }
-                .scrollContentBackground(.hidden)
-
-                // Loading overlay (unchanged)
-                if vm.isLoading {
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                        Text("Loading statistics...")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        Text("\(item.visited)/\(item.total)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .frame(width: 38, alignment: .trailing)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(.systemBackground).opacity(0.9))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
                 }
             }
-            .background(Color.appPaper)
-            .toolbar(.hidden, for: .navigationBar)
-            .listStyle(.plain)
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func continentColor(for percentage: Double) -> Color {
-        switch percentage {
-        case 75...:
-            return .green
-        case 50..<75:
-            return .blue
-        case 25..<50:
-            return .orange
-        default:
-            return .red
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
     }
 
-    private func continentAccent(for continent: Continent) -> Color {
+    // MARK: - Badges
+
+    private var badgesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("Badges")
+                .padding(.horizontal, 16)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(achievements) { achievement in
+                        AchievementCard(achievement: achievement) {
+                            selectedAchievement = achievement
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    // MARK: - Recent Memories
+
+    private var recentMemoriesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("Recent memories")
+            ForEach(Array(recentVisits.prefix(5)), id: \.country.id) { item in
+                NavigationLink {
+                    CountryDetailScreen(country: item.country)
+                } label: {
+                    memoryCard(country: item.country, date: item.date)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func memoryCard(country: Country, date: Date?) -> some View {
+        let visit = visitedVisits.first { $0.countryId == country.id }
+        let firstPhoto = visit?.photos.first
+        let notes = visit?.notes ?? ""
+
+        return VStack(alignment: .leading, spacing: 0) {
+            if let photo = firstPhoto, let uiImage = UIImage(data: photo.imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .clipped()
+            } else {
+                Text(country.flagEmoji)
+                    .font(.system(size: 64))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 120)
+                    .background(Color(hex: "#F3F3F3"))
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(country.name)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                if !notes.isEmpty {
+                    Text("\"\(notes)\"")
+                        .font(.system(size: 13))
+                        .italic()
+                        .foregroundStyle(Color(hex: "#6B6B6B"))
+                        .lineLimit(2)
+                }
+                if let date {
+                    Text(date.formatted(date: .abbreviated, time: .omitted).uppercased())
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .tracking(0.5)
+                        .padding(.top, 2)
+                }
+            }
+            .padding(16)
+        }
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+        .contentShape(Rectangle())
+    }
+
+    // MARK: - Helpers
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 17, weight: .bold))
+            .foregroundStyle(Color(hex: "#1b1b1b"))
+    }
+
+    private func continentShortName(_ continent: Continent) -> String {
         switch continent {
-        case .africa:       return .appSunset
-        case .antarctica:   return .appSky
-        case .asia:         return .appRose
-        case .europe:       return .appSky
-        case .northAmerica: return .appLime
-        case .oceania:      return .appSunset
-        case .southAmerica: return .appRose
-        }
-    }
-    
-    private func photoCount(for countryId: String) -> Int {
-        visitedVisits.first { $0.countryId == countryId }?.photos.count ?? 0
-    }
-
-    private func continentDots(visited: Int, total: Int, accent: Color) -> some View {
-        let cols = Array(repeating: GridItem(.fixed(5), spacing: 3), count: 16)
-        return LazyVGrid(columns: cols, alignment: .leading, spacing: 3) {
-            ForEach(0..<min(total, 48), id: \.self) { i in
-                Circle()
-                    .fill(i < visited ? accent : accent.opacity(0.22))
-                    .frame(width: 5, height: 5)
-            }
+        case .northAmerica: return "N. America"
+        case .southAmerica: return "S. America"
+        default: return continent.displayName
         }
     }
 
-    private func memoryCardBG(at index: Int) -> Color {
-        switch index % 4 {
-        case 0:  return .appAqua
-        case 1:  return .appBlush
-        case 2:  return .appLime.opacity(0.30)
-        default: return .appSunset.opacity(0.22)
-        }
-    }
+    // MARK: - ViewModel
 
-    private func memoryCardAccent(at index: Int) -> Color {
-        switch index % 4 {
-        case 0:  return .appSky
-        case 1:  return .appRose
-        case 2:  return .appLime
-        default: return .appSunset
-        }
-    }
-
-    private func formattedDate(_ date: Date?) -> String {
-        guard let date else { return "—" }
-        return date.formatted(date: .abbreviated, time: .omitted)
-    }
-    
-    // MARK: - Stats ViewModel
-    
     @MainActor
     final class StatsViewModel: ObservableObject {
         @Published private(set) var countries: [Country] = []
         @Published private(set) var isLoading = false
-        
+
         private let service = CountryDataService.shared
-        
-        init() {
-            #if DEBUG
-            print("📊 StatsViewModel initialized")
-            #endif
-            load()
-        }
-        
+
+        init() { load() }
+
         func load() {
-            #if DEBUG
-            print("📊 StatsViewModel.load() called")
-            #endif
             isLoading = true
-            
-            // Load countries
             Task(priority: .userInitiated) {
-                #if DEBUG
-                print("📊 About to call CountryDataService.loadCountries()")
-                #endif
-                let loadedCountries = service.loadCountries()
-                #if DEBUG
-                print("📊 Received \(loadedCountries.count) countries from service")
-                #endif
-                
-                self.countries = loadedCountries
+                let loaded = service.loadCountries()
+                self.countries = loaded
                 self.isLoading = false
-                #if DEBUG
-                print("📊 Updated StatsViewModel with \(loadedCountries.count) countries")
-                #endif
             }
         }
-        
-        // MARK: - Achievements
-        
-        /// Calculate achievements based on current visit data
-        /// - Parameter visits: Dictionary of all visits from AppState
-        /// - Returns: Array of achievements with unlock status
+
         func achievements(from visits: [String: Visit]) -> [Achievement] {
-            return AchievementEngine.calculateAchievements(
-                visits: visits,
-                countries: countries
-            )
-        }
-    }
-    
-    // MARK: - Supporting Views
-
-    private struct ConfettiWave: Shape {
-        func path(in rect: CGRect) -> Path {
-            var p = Path()
-            p.move(to: CGPoint(x: 0, y: rect.midY))
-            p.addCurve(
-                to: CGPoint(x: rect.width / 2, y: rect.midY),
-                control1: CGPoint(x: rect.width * 0.15, y: 0),
-                control2: CGPoint(x: rect.width * 0.35, y: rect.height)
-            )
-            p.addCurve(
-                to: CGPoint(x: rect.width, y: rect.midY),
-                control1: CGPoint(x: rect.width * 0.65, y: 0),
-                control2: CGPoint(x: rect.width * 0.85, y: rect.height)
-            )
-            return p
+            AchievementEngine.calculateAchievements(visits: visits, countries: countries)
         }
     }
 
-    private struct MiniStatCard: View {
-        let value: String
-        let label: String
-        let background: Color
-        let foreground: Color
+    // MARK: - Achievement Card
 
-        var body: some View {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(value)
-                    .font(AppTypography.statLarge)
-                    .foregroundStyle(foreground)
-                Spacer()
-                Text(label)
-                    .font(AppTypography.caption)
-                    .foregroundStyle(foreground.opacity(0.75))
-            }
-            .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
-            .padding(16)
-            .background(background)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .shadow(color: Color.appInk.opacity(0.06), radius: 8, x: 0, y: 3)
-        }
-    }
-    
     private struct AchievementCard: View {
         let achievement: Achievement
+        let onTap: () -> Void
 
-        private var palette: (bg: Color, fg: Color) {
-            guard achievement.isUnlocked else {
-                return (bg: .appCard, fg: .appInk)
-            }
-            switch achievement.type {
-            case .firstCountry:         return (bg: .appRose,   fg: .white)
-            case .firstNote:            return (bg: .appBlush,  fg: .appInk)
-            case .firstPhoto:           return (bg: .appAqua,   fg: .appInk)
-            case .countries(let n):     return n <= 5
-                                            ? (bg: .appLime,    fg: .appInk)
-                                            : (bg: .appSunset,  fg: .white)
-            case .continents:           return (bg: .appBlush,  fg: .appInk)
-            case .allContinents:        return (bg: .appAqua,   fg: .appInk)
-            }
-        }
-
-        private var shortLabel: String {
-            switch achievement.type {
-            case .firstCountry:         return "First Country"
-            case .firstNote:            return "First Note"
-            case .firstPhoto:           return "First Photo"
-            case .countries(let n):     return "\(n) Countries"
-            case .continents(let n):    return "\(n) Continents"
-            case .allContinents:        return "All Continents"
-            }
-        }
+        private var label: String { achievement.badgeLabel }
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(achievement.isUnlocked ? "🏆" : "🔒")
-                    .font(.system(size: 28))
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(shortLabel)
-                        .font(AppTypography.displaySmall)
-                        .foregroundStyle(palette.fg)
+            Button(action: onTap) {
+                VStack(spacing: 8) {
+                    Text(achievement.isUnlocked ? "🏆" : "🔒")
+                        .font(.system(size: 30))
+                    Text(label)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color(hex: "#1b1b1b"))
                         .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(width: 90, height: 90)
+                .background(achievement.isUnlocked ? Color(hex: "#FFF9E6") : Color(hex: "#F3F3F3"))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+                .opacity(achievement.isUnlocked ? 1.0 : 0.6)
+            }
+            .buttonStyle(.plain)
+        }
+    }
 
-                    Text(achievement.isUnlocked ? "Unlocked" : "Locked")
-                        .font(AppTypography.eyebrow)
-                        .fontWeight(.bold)
-                        .tracking(1.2)
-                        .textCase(.uppercase)
-                        .foregroundStyle(palette.fg.opacity(achievement.isUnlocked ? 0.82 : 0.45))
+    private struct BadgeDetailSheet: View {
+        let achievement: Achievement
+        @Environment(\.dismiss) private var dismiss
+
+        var body: some View {
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: 12) {
+                    Text(achievement.isUnlocked ? "🏆" : "🔒")
+                        .font(.system(size: 56))
+                        .padding(.top, 32)
+
+                    Text(achievement.badgeLabel)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(Color(hex: "#1b1b1b"))
+
+                    Text(achievement.isUnlocked ? "UNLOCKED" : "LOCKED")
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(1.5)
+                        .foregroundStyle(achievement.isUnlocked ? Color(hex: "#1E7F4E") : Color(hex: "#9E9E9E"))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 5)
+                        .background(achievement.isUnlocked ? Color(hex: "#1E7F4E").opacity(0.1) : Color(hex: "#F3F3F3"))
+                        .clipShape(Capsule())
                 }
-            }
-            .frame(width: 110, height: 110, alignment: .leading)
-            .padding(13)
-            .background(palette.bg)
-            .overlay {
-                if !achievement.isUnlocked {
-                    RoundedRectangle(cornerRadius: 22)
-                        .stroke(Color.appLine, lineWidth: 1)
+
+                // Info card
+                VStack(alignment: .leading, spacing: 16) {
+                    infoRow(title: "ABOUT", body: achievement.badgeDescription)
+                    if !achievement.isUnlocked {
+                        Divider()
+                        infoRow(title: "HOW TO UNLOCK", body: achievement.unlockRequirement)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(Color(hex: "#F7F7F7"))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .padding(.horizontal, 24)
+                .padding(.top, 24)
+
+                Spacer()
             }
-            .clipShape(RoundedRectangle(cornerRadius: 22))
-            .shadow(
-                color: Color.appInk.opacity(achievement.isUnlocked ? 0.09 : 0.04),
-                radius: achievement.isUnlocked ? 12 : 5,
-                x: 0,
-                y: achievement.isUnlocked ? 6 : 2
-            )
-            .opacity(achievement.isUnlocked ? 1.0 : 0.88)
+            .frame(maxWidth: .infinity)
+            .background(Color.white)
+        }
+
+        private func infoRow(title: String, body: String) -> some View {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .tracking(0.8)
+                Text(body)
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
+
+// MARK: - Achievement display helpers
+
+private extension Achievement {
+    var badgeLabel: String {
+        switch type {
+        case .firstCountry:     return "Nomad"
+        case .firstNote:        return "Journalist"
+        case .firstPhoto:       return "Photographer"
+        case .countries(let n): return "\(n) Countries"
+        case .continents(let n):return "\(n) Continents"
+        case .allContinents:    return "Jetsetter"
+        }
+    }
+
+    var badgeDescription: String {
+        switch type {
+        case .firstCountry:
+            return "Awarded to explorers who have visited their first country. Every great journey starts with a single step."
+        case .firstNote:
+            return "Awarded to travellers who have written their first memory. Words keep the spirit of a journey alive."
+        case .firstPhoto:
+            return "Awarded to those who captured their first travel photo. A picture is worth a thousand memories."
+        case .countries(let n):
+            return "Awarded for visiting \(n) countries. The world is vast, and you are making your mark on it."
+        case .continents(let n):
+            return "Awarded for setting foot on \(n) different continents. You are a true multi-continental explorer."
+        case .allContinents:
+            return "Awarded to the rare few who have visited all 7 continents. The world is your home."
+        }
+    }
+
+    var unlockRequirement: String {
+        switch type {
+        case .firstCountry:
+            return "Mark any country as visited."
+        case .firstNote:
+            return "Add a note to any visited country."
+        case .firstPhoto:
+            return "Add a photo to any visited country."
+        case .countries(let n):
+            return "Visit \(n) countries in total."
+        case .continents(let n):
+            return "Visit at least one country on \(n) different continents."
+        case .allContinents:
+            return "Visit at least one country on every continent."
+        }
+    }
+}
+
 // MARK: - Visited This Year List View
 
 struct VisitedThisYearListView: View {
     let visits: [(country: Country, date: Date)]
-    
+
     var body: some View {
         List {
             ForEach(visits, id: \.country.id) { item in
@@ -750,7 +631,6 @@ struct VisitedThisYearListView: View {
                     HStack(spacing: 12) {
                         Text(item.country.flagEmoji)
                             .font(.title2)
-                        
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.country.name)
                                 .font(.body)
@@ -758,10 +638,8 @@ struct VisitedThisYearListView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        
                         Spacer()
-                        
-                        Text(formattedDate(item.date))
+                        Text(item.date.formatted(date: .abbreviated, time: .omitted))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -772,9 +650,4 @@ struct VisitedThisYearListView: View {
         .navigationTitle("Visited This Year")
         .navigationBarTitleDisplayMode(.inline)
     }
-    
-    private func formattedDate(_ date: Date) -> String {
-        date.formatted(date: .abbreviated, time: .omitted)
-    }
 }
-
