@@ -372,17 +372,14 @@ struct VisitedCountriesMapView: UIViewRepresentable {
             let countryID = countryID(for: overlay)
 
             if let countryID, visitedCountryIDs.contains(countryID) {
-                // Priority 1: Visited countries - vibrant green
-                renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.7)
-                renderer.strokeColor = UIColor.systemGreen.withAlphaComponent(0.9)
+                renderer.fillColor = UIColor(red: 0.976, green: 0.137, blue: 0.302, alpha: 0.7)
+                renderer.strokeColor = UIColor(red: 0.976, green: 0.137, blue: 0.302, alpha: 0.9)
                 renderer.lineWidth = 1.5
             } else if let countryID, wantToVisitCountryIDs.contains(countryID) {
-                // Priority 2: Want to Visit countries - warm orange
-                renderer.fillColor = UIColor.systemOrange.withAlphaComponent(0.6)
-                renderer.strokeColor = UIColor.systemOrange.withAlphaComponent(0.8)
+                renderer.fillColor = UIColor(red: 0.576, green: 0.878, blue: 0.980, alpha: 0.7)
+                renderer.strokeColor = UIColor(red: 0.576, green: 0.878, blue: 0.980, alpha: 0.9)
                 renderer.lineWidth = 1.2
             } else {
-                // Priority 3: Unvisited countries - neutral gray
                 renderer.fillColor = UIColor.systemGray5.withAlphaComponent(0.85)
                 renderer.strokeColor = UIColor.systemGray3.withAlphaComponent(0.7)
                 renderer.lineWidth = 0.5

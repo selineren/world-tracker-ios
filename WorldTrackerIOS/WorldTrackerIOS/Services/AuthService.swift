@@ -21,6 +21,13 @@ final class AuthService: ObservableObject {
     var userEmail: String {
         user?.email ?? "Unknown user"
     }
+
+    var displayName: String {
+        if let name = user?.displayName, !name.trimmingCharacters(in: .whitespaces).isEmpty {
+            return name
+        }
+        return userEmail
+    }
     
     private var authStateHandle: AuthStateDidChangeListenerHandle?
 
@@ -109,8 +116,23 @@ final class AuthService: ObservableObject {
         user != nil
     }
 
-    func signUp(email: String, password: String) async throws {
-        _ = try await Auth.auth().createUser(withEmail: email, password: password)
+    func signUp(email: String, password: String, firstName: String, lastName: String) async throws {
+        let result = try await Auth.auth().createUser(withEmail: email, password: password)
+
+        // Set Firebase Auth display name so it's available immediately without a Firestore fetch
+        let changeRequest = result.user.createProfileChangeRequest()
+        changeRequest.displayName = "\(firstName) \(lastName)".trimmingCharacters(in: .whitespaces)
+        try? await changeRequest.commitChanges()
+
+        // Persist name + email in Firestore profile
+        let repo = FirestoreUserRepository()
+        let profile = UserProfile(
+            userId: result.user.uid,
+            email: email.lowercased().trimmingCharacters(in: .whitespaces),
+            firstName: firstName,
+            lastName: lastName
+        )
+        try? await repo.createOrUpdateProfile(profile)
     }
 
     func signIn(email: String, password: String) async throws {

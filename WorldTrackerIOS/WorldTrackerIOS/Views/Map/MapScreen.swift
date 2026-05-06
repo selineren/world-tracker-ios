@@ -12,15 +12,20 @@ import MapKit
 struct MapScreen: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var authService: AuthService
+
+    var onNavigateToStats: () -> Void = {}
+    var onNavigateToCountries: () -> Void = {}
     
     @State private var showSyncStatus = true
     @State private var selectedCountryForSheet: SelectedCountry?
     @State private var selectedCountryForDetail: Country?
     @State private var mapZoomLevel: MapZoomLevel = .continent
     @State private var showingMapUI = true
-    @State private var expandedCountryPreview: CountryPreviewData?
     @State private var filterMode: FilterMode = .all
     @State private var totalCountries: Int = 0
+    @State private var allCountries: [Country] = []
+    @State private var isPopupExpanded = false
+    @State private var showingMemoriesSheet = false
     
     enum FilterMode: String, CaseIterable {
         case all = "All"
@@ -69,172 +74,87 @@ struct MapScreen: View {
                     onCountryTapped: { countryID in
                         handleCountryTap(countryID: countryID)
                     },
-                    onBitmojiTapped: { countryID in
-                        handleBitmojiTap(countryID: countryID)
-                    }
+                    onBitmojiTapped: nil
                 )
-                .edgesIgnoringSafeArea(.top)
-                
-                // Overlay UI Elements - Left side
-                VStack(alignment: .leading, spacing: 12) {
-                    // Stats Card (top left)
-                    if showingMapUI {
-                        statsCard
-                            .transition(.move(edge: .leading).combined(with: .opacity))
-                    }
-                    
-                    Spacer()
-                    
-                    // Legend (bottom left)
-                    if showingMapUI {
-                        legendCard
-                            .padding(.bottom, 80) // Move up to avoid filter bar
-                            .transition(.move(edge: .leading).combined(with: .opacity))
-                    }
-                }
-                .padding()
-                
-                // Filter Picker (bottom center)
-                if showingMapUI {
-                    VStack {
+                .ignoresSafeArea()
+
+                // Full overlay layout
+                VStack(spacing: 0) {
+                    // Top bar: eye button (left) + stats pill (right)
+                    HStack(alignment: .center, spacing: 12) {
+                        eyeButton
                         Spacer()
-                        
-                        filterPicker
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 20)
+                        if showingMapUI {
+                            statsCard
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
                     }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                
-                // Zoom Controls (right side)
-                VStack {
-                    Spacer()
-                    
-                    HStack {
-                        Spacer()
-                        
-                        zoomControls
-                            .padding(.trailing, 16)
-                            .padding(.bottom, showingMapUI ? 100 : 20) // Adjust for filter bar
-                    }
-                }
-                .padding(.top, 100) // Avoid overlap with navigation bar
-                
-                // Sync status indicator (top center)
-                // Keep showing errors even when UI is hidden, but hide success/idle messages
-                if showSyncStatus && (showingMapUI || isSyncError) {
-                    VStack {
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+
+                    // Sync status banner
+                    if showSyncStatus && (showingMapUI || isSyncError) {
                         SyncStatusView(
                             status: appState.syncStatus,
                             onRetry: {
-                                Task {
-                                    await appState.retrySyncIfNeeded()
-                                }
+                                Task { await appState.retrySyncIfNeeded() }
                             },
                             onDismiss: {
-                                withAnimation {
-                                    showSyncStatus = false
-                                }
+                                withAnimation { showSyncStatus = false }
                             }
                         )
-                        .padding(.horizontal)
+                        .padding(.horizontal, 16)
                         .padding(.top, 8)
                         .transition(.move(edge: .top).combined(with: .opacity))
-                        
-                        Spacer()
                     }
-                }
-                
-                // Expanded preview bubble (when tapping a bitmoji)
-                if let preview = expandedCountryPreview {
-                    ZStack {
-                        // Tap outside to dismiss
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                withAnimation {
-                                    expandedCountryPreview = nil
-                                }
-                            }
-                        
-                        VStack {
-                            Spacer()
-                            
-                            HStack {
+
+                    Spacer()
+
+                    // Bottom section
+                    if showingMapUI {
+                        VStack(spacing: 12) {
+                            HStack(alignment: .bottom) {
+                                legendCard
                                 Spacer()
-                                
-                                CountryMapPreviewBubble(
-                                    country: preview.country,
-                                    visit: preview.visit,
-                                    onDismiss: {
-                                        expandedCountryPreview = nil
-                                    },
-                                    onViewDetails: {
-                                        selectedCountryForDetail = preview.country
-                                        expandedCountryPreview = nil
-                                    }
-                                )
-                                
-                                Spacer()
+                                zoomControls
+                                    .fixedSize()
                             }
                             .padding(.horizontal, 16)
-                            .padding(.bottom, 32)
-                            // Prevent tap from passing through to the background
-                            .onTapGesture { }
+
+                            filterPicker
+                                .padding(.horizontal, 16)
                         }
+                        .padding(.bottom, 8)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-                    .transition(.opacity)
+
+                    // "Where have you been?" popup — always visible
+                    whereHaveYouBeenPopup
+                        .padding(.bottom, 12)
                 }
+
             }
-            .navigationTitle("Map")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        withAnimation(.spring(response: 0.3)) {
-                            showingMapUI.toggle()
-                        }
-                    } label: {
-                        Image(systemName: showingMapUI ? "eye.fill" : "eye.slash.fill")
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 12) {
-                        // Compact sync status in toolbar
-                        SyncStatusToolbarItem(status: appState.syncStatus)
-                        
-                        refreshButton
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .task(id: authService.user?.uid) {
                 await handleAuthStateChange()
             }
             .onChange(of: appState.syncStatus) { oldValue, newValue in
-                // Show status banner when status changes
                 if case .idle = oldValue, case .idle = newValue {
-                    // Don't show for idle -> idle
                 } else {
-                    withAnimation {
-                        showSyncStatus = true
-                    }
-                    
-                    // Auto-hide success message after 3 seconds
+                    withAnimation { showSyncStatus = true }
                     if case .success = newValue {
                         Task {
                             try? await Task.sleep(for: .seconds(3))
-                            withAnimation {
-                                showSyncStatus = false
-                            }
+                            withAnimation { showSyncStatus = false }
                         }
                     }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                Task {
-                    await refreshMapData()
-                }
+                Task { await refreshMapData() }
+            }
+            .sheet(isPresented: $showingMemoriesSheet) {
+                MapMemoriesSheet(visits: appState.visits, countries: allCountries)
             }
             .sheet(item: $selectedCountryForSheet) { selectedCountry in
                 CountryQuickActionSheet(
@@ -252,54 +172,67 @@ struct MapScreen: View {
                 CountryDetailScreen(country: country)
             }
             .task {
-                // Load total countries count from CountryDataService
                 let countries = CountryDataService.shared.loadCountries()
                 totalCountries = countries.count
+                allCountries = countries
             }
         }
     }
     
+    // MARK: - Eye Button
+
+    private var eyeButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.3)) {
+                showingMapUI.toggle()
+            }
+        } label: {
+            Image(systemName: showingMapUI ? "eye" : "eye.slash")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Color.black)
+                .frame(width: 40, height: 40)
+                .background(Color.white)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Zoom Controls
-    
+
     private var zoomControls: some View {
-        VStack(spacing: 1) {
-            // Zoom In Button
+        VStack(spacing: 0) {
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    zoomIn()
-                }
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { zoomIn() }
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(canZoomIn ? Color.black : Color.black.opacity(0.3))
+                    .frame(width: 40, height: 36)
                     .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .disabled(!canZoomIn)
-            .opacity(canZoomIn ? 1 : 0.5)
-            
-            Divider()
-                .frame(width: 44)
-            
-            // Zoom Out Button
+
+            Rectangle()
+                .fill(Color(hex: "#EEEEEE"))
+                .frame(width: 28, height: 1)
+
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    zoomOut()
-                }
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { zoomOut() }
             } label: {
                 Image(systemName: "minus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(canZoomOut ? Color.black : Color.black.opacity(0.3))
+                    .frame(width: 40, height: 36)
                     .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .disabled(!canZoomOut)
-            .opacity(canZoomOut ? 1 : 0.5)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
     }
     
     private var canZoomIn: Bool {
@@ -349,139 +282,314 @@ struct MapScreen: View {
     }
     
     // MARK: - Filter Picker
-    
+
     private var filterPicker: some View {
-        Picker("Filter", selection: $filterMode) {
+        HStack(spacing: 8) {
+            Spacer()
             ForEach(FilterMode.allCases, id: \.self) { mode in
-                Text(mode.rawValue).tag(mode)
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        filterMode = mode
+                    }
+                } label: {
+                    Text(mode.rawValue)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(filterMode == mode ? Color.white : Color.black)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 10)
+                        .background(filterMode == mode ? Color.black : Color.white)
+                        .clipShape(Capsule())
+                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                }
+                .buttonStyle(.plain)
             }
+            Spacer()
         }
-        .pickerStyle(.segmented)
-        .padding(8)
-        .background(.ultraThinMaterial)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
     
     // MARK: - Stats Card
-    
+
     private var statsCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "globe.americas.fill")
-                    .foregroundStyle(.blue)
-                Text("Countries Visited")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 10) {
+            HStack(spacing: 4) {
+                Image(systemName: "globe")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                Text("VISITED")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .tracking(0.5)
             }
-            
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+
+            Rectangle()
+                .fill(Color(hex: "#E0E0E0"))
+                .frame(width: 1, height: 16)
+
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text("\(appState.visitedCountryIDs.count)")
-                    .font(.title.bold())
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 20, weight: .black))
+                    .foregroundStyle(Color.black)
                 Text("/ \(totalCountries)")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
             }
-            
-            if appState.visitedCountryIDs.count > 0 && totalCountries > 0 {
-                let percentage = Double(appState.visitedCountryIDs.count) / Double(totalCountries) * 100
-                Text("\(percentage, specifier: "%.1f")% of the world")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+
+            if totalCountries > 0 {
+                Rectangle()
+                    .fill(Color(hex: "#E0E0E0"))
+                    .frame(width: 1, height: 16)
+
+                let pct = Double(appState.visitedCountryIDs.count) / Double(totalCountries) * 100
+                Text(String(format: "%.1f%% WORLD", pct))
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .tracking(0.5)
             }
         }
-        .padding(12)
-        .background(.ultraThinMaterial)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
     }
     
     // MARK: - Legend Card
-    
+
     private var legendCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Legend")
-                .font(.caption.bold())
-                .foregroundStyle(.primary)
-            
-            if filterMode == .all || filterMode == .visited {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 12, height: 12)
-                    Text("Visited")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            Text("MAP LEGEND")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Color(hex: "#9E9E9E"))
+                .tracking(1.2)
+
+            VStack(alignment: .leading, spacing: 8) {
+                if filterMode == .all || filterMode == .visited {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color(hex: "#F9234D"))
+                            .frame(width: 10, height: 10)
+                        Text("VISITED")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundStyle(Color.black)
+                            .tracking(0.5)
+                    }
                 }
-            }
-            
-            if filterMode == .all || filterMode == .wishlist {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 12, height: 12)
-                    Text("Wishlist")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            
-            if filterMode == .all {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.gray.opacity(0.6))
-                        .frame(width: 12, height: 12)
-                    Text("Not visited")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+
+                if filterMode == .all || filterMode == .wishlist {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color(hex: "#93E0FA"))
+                            .frame(width: 10, height: 10)
+                        Text("WISHLIST")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundStyle(Color.black)
+                            .tracking(0.5)
+                    }
                 }
             }
         }
-        .padding(12)
+        .padding(14)
+        .background(Color.white.opacity(0.9))
         .background(.ultraThinMaterial)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
     }
     
-    // MARK: - Refresh Button
-    
-    private var refreshButton: some View {
-        Button {
-            Task {
-                await refreshMapData()
-            }
-        } label: {
-            Image(systemName: "arrow.clockwise")
+    // MARK: - Where Have You Been Popup
+
+    private var recentVisits: [(country: Country, visit: Visit)] {
+        allCountries.compactMap { country in
+            guard let visit = appState.visits[country.id], visit.isVisited else { return nil }
+            return (country, visit)
         }
-        .disabled(appState.isSyncing || !authService.isSignedIn)
+        .sorted {
+            let a = $0.visit.visitedDate ?? $0.visit.updatedAt
+            let b = $1.visit.visitedDate ?? $1.visit.updatedAt
+            return a > b
+        }
+        .prefix(3)
+        .map { $0 }
     }
-    
+
+    private func visitSubtitle(_ visit: Visit) -> String {
+        let notes = visit.notes.trimmingCharacters(in: .whitespaces)
+        if let date = visit.visitedDate {
+            let formatted = date.formatted(.dateTime.month(.abbreviated).year())
+            return notes.isEmpty ? formatted : "\(notes) · \(formatted)"
+        }
+        return notes.isEmpty ? "" : notes
+    }
+
+    private var whereHaveYouBeenPopup: some View {
+        VStack(spacing: 0) {
+
+            // MARK: Drag handle — always visible, toggles on tap/swipe
+            VStack(spacing: 0) {
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color(hex: "#CCCCCC"))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 14)
+                    .padding(.bottom, 16)
+
+                HStack {
+                    Text("Where have you been?")
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, isPopupExpanded ? 20 : 18)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    isPopupExpanded.toggle()
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 20)
+                    .onEnded { value in
+                        let dy = value.translation.height
+                        if dy < -30 && !isPopupExpanded {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { isPopupExpanded = true }
+                        } else if dy > 30 && isPopupExpanded {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { isPopupExpanded = false }
+                        }
+                    }
+            )
+
+            // MARK: Expanded content
+            if isPopupExpanded {
+
+                // Quick action buttons (Memories + Stats)
+                HStack(spacing: 12) {
+                    quickActionButton(icon: "photo.stack.fill", label: "Memories") {
+                        showingMemoriesSheet = true
+                    }
+                    quickActionButton(icon: "chart.bar.fill", label: "Stats") {
+                        onNavigateToStats()
+                        withAnimation(.spring(response: 0.3)) { isPopupExpanded = false }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+
+                // Recent visits header
+                HStack {
+                    Text("Recent visits")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                    Spacer()
+                    Button {
+                        onNavigateToCountries()
+                        withAnimation(.spring(response: 0.3)) { isPopupExpanded = false }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("See all")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 12)
+
+                // Recent visits list
+                let recent = recentVisits
+                if recent.isEmpty {
+                    Text("Mark countries as visited to see them here")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(recent, id: \.country.id) { item in
+                            Button {
+                                selectedCountryForDetail = item.country
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    isPopupExpanded = false
+                                }
+                            } label: {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(hex: "#F3F3F3"))
+                                            .frame(width: 48, height: 48)
+                                        Text(item.country.flagEmoji)
+                                            .font(.system(size: 24))
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(item.country.name)
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                                        let subtitle = visitSubtitle(item.visit)
+                                        if !subtitle.isEmpty {
+                                            Text(subtitle)
+                                                .font(.system(size: 13))
+                                                .foregroundStyle(Color(hex: "#9E9E9E"))
+                                        }
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 14)
+                            }
+                            .buttonStyle(.plain)
+
+                            if item.country.id != recent.last?.country.id {
+                                Divider().padding(.horizontal, 20)
+                            }
+                        }
+                    }
+                    .padding(.bottom, 8)
+                }
+            }
+        }
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: -4)
+        .padding(.horizontal, 16)
+    }
+
+    private func quickActionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "#1b1b1b"))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(.white)
+                }
+                Text(label)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color(hex: "#1b1b1b"))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 100)
+            .background(Color(hex: "#F3F3F3"))
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Data Management
     
     private func handleCountryTap(countryID: String) {
-        // Close any expanded preview first
-        expandedCountryPreview = nil
-        
-        // Always show quick action sheet (for both visited and unvisited)
         selectedCountryForSheet = SelectedCountry(id: countryID)
-    }
-    
-    private func handleBitmojiTap(countryID: String) {
-        // Close any open quick action sheet first
-        selectedCountryForSheet = nil
-        
-        // Show expanded preview when tapping a bitmoji
-        let countries = CountryDataService.shared.loadCountries()
-        guard let country = countries.first(where: { $0.id == countryID }) else {
-            return
-        }
-        
-        let visit = appState.visit(for: countryID)
-        
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            expandedCountryPreview = CountryPreviewData(country: country, visit: visit)
-        }
     }
     
     private func getBitmojiAnnotations() -> [CountryBitmojiAnnotation] {
@@ -566,171 +674,159 @@ struct CountryQuickActionSheet: View {
     @ObservedObject var appState: AppState
     let onViewDetails: (Country) -> Void
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var country: Country?
     @State private var isLoading = true
-    
-    private var isVisited: Bool {
-        appState.isVisited(countryID)
-    }
-    
-    private var wantToVisit: Bool {
-        appState.wantToVisit(countryID)
-    }
-    
+
+    private var isVisited: Bool { appState.isVisited(countryID) }
+    private var wantToVisit: Bool { appState.wantToVisit(countryID) }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            if isLoading {
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Loading...")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 40)
-            } else if let country = country {
-                VStack(spacing: 12) {
-                    Text(country.flagEmoji)
-                        .font(.system(size: 64))
-                    
-                    Text(country.name)
-                        .font(.title2.bold())
-                    
-                    Text(country.continent.displayName)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 24)
+            // Drag handle
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(Color(hex: "#CCCCCC"))
+                .frame(width: 36, height: 5)
+                .padding(.top, 12)
                 .padding(.bottom, 20)
+
+            if isLoading {
+                Spacer()
+                ProgressView()
+                Spacer()
+            } else if let country = country {
+                // Country hero
+                VStack(spacing: 10) {
+                    Text(country.flagEmoji)
+                        .font(.system(size: 60))
+
+                    Text(country.name)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(Color(hex: "#1b1b1b"))
+
+                    HStack(spacing: 8) {
+                        Text(country.continent.displayName)
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color(hex: "#9E9E9E"))
+
+                        if isVisited {
+                            statusPill("Visited", fg: Color(hex: "#2E9E5B"), bg: Color(hex: "#F0FFF4"))
+                        } else if wantToVisit {
+                            statusPill("Wishlist", fg: Color(hex: "#1D8FC2"), bg: Color(hex: "#EAF6FE"))
+                        }
+                    }
+                }
+                .padding(.bottom, 24)
+
+                // Action card
+                VStack(spacing: 0) {
+                    actionRow(
+                        icon: "checkmark.circle.fill",
+                        iconBg: isVisited ? Color(hex: "#F0FFF4") : Color(hex: "#F3F3F3"),
+                        iconFg: isVisited ? Color(hex: "#2E9E5B") : Color(hex: "#9E9E9E"),
+                        title: isVisited ? "Mark as Not Visited" : "Mark as Visited",
+                        chevron: false,
+                        disabled: false
+                    ) { toggleVisited() }
+
+                    Divider().padding(.horizontal, 16)
+
+                    actionRow(
+                        icon: wantToVisit ? "star.fill" : "star",
+                        iconBg: wantToVisit ? Color(hex: "#EAF6FE") : Color(hex: "#F3F3F3"),
+                        iconFg: wantToVisit ? Color(hex: "#4A90D9") : Color(hex: "#9E9E9E"),
+                        title: wantToVisit ? "Remove from Wishlist" : "Add to Wishlist",
+                        chevron: false,
+                        disabled: isVisited
+                    ) { toggleWantToVisit() }
+
+                    Divider().padding(.horizontal, 16)
+
+                    actionRow(
+                        icon: "arrow.right.circle.fill",
+                        iconBg: Color(hex: "#EAF4FF"),
+                        iconFg: Color(hex: "#4A90D9"),
+                        title: "View Details",
+                        chevron: true,
+                        disabled: false
+                    ) { onViewDetails(country) }
+                }
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+                .padding(.horizontal, 16)
+
+                Spacer()
             } else {
-                VStack(spacing: 12) {
+                Spacer()
+                VStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle")
-                        .font(.largeTitle)
-                        .foregroundStyle(.orange)
+                        .font(.system(size: 36))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
                     Text("Country not found")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
                 }
-                .padding(.vertical, 40)
+                Spacer()
             }
-            
-            Divider()
-            
-            // Actions
-            VStack(spacing: 0) {
-                Button {
-                    toggleVisited()
-                } label: {
-                    HStack {
-                        Image(systemName: isVisited ? "checkmark.circle.fill" : "checkmark.circle")
-                            .font(.title3)
-                            .foregroundStyle(isVisited ? .green : .gray)
-                        
-                        Text(isVisited ? "Mark as Not Visited" : "Mark as Visited")
-                            .font(.headline)
-                        
-                        Spacer()
-                    }
-                    .padding()
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(country == nil)
-                
-                Divider()
-                    .padding(.leading)
-                
-                Button {
-                    toggleWantToVisit()
-                } label: {
-                    HStack {
-                        Image(systemName: wantToVisit ? "star.fill" : "star")
-                            .font(.title3)
-                            .foregroundStyle(wantToVisit ? .orange : .gray)
-                        
-                        Text(wantToVisit ? "Remove from Wishlist" : "Want to Visit")
-                            .font(.headline)
-                        
-                        Spacer()
-                    }
-                    .padding()
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(isVisited || country == nil)
-                
-                Divider()
-                    .padding(.leading)
-                
-                Button {
-                    if let country = country {
-                        onViewDetails(country)
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "info.circle")
-                            .font(.title3)
-                            .foregroundStyle(.blue)
-                        
-                        Text("View Details")
-                            .font(.headline)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(country == nil)
-            }
-            
-            Spacer()
         }
-        .task {
-            await loadCountry()
-        }
+        .background(Color(hex: "#F7F7F7"))
+        .task { await loadCountry() }
     }
-    
+
+    private func statusPill(_ label: String, fg: Color, bg: Color) -> some View {
+        Text(label)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(fg)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(bg)
+            .clipShape(Capsule())
+    }
+
+    private func actionRow(icon: String, iconBg: Color, iconFg: Color, title: String, chevron: Bool, disabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().fill(iconBg).frame(width: 40, height: 40)
+                    Image(systemName: icon)
+                        .font(.system(size: 16))
+                        .foregroundStyle(iconFg)
+                }
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(disabled ? Color(hex: "#CCCCCC") : Color(hex: "#1b1b1b"))
+                Spacer()
+                if chevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled || country == nil)
+    }
+
     private func loadCountry() async {
-        // Load countries (happens on main actor)
         let countries = CountryDataService.shared.loadCountries()
-        
-        // Find matching country
         country = countries.first { $0.id == countryID }
         isLoading = false
     }
-    
+
     private func toggleVisited() {
-        let newState = !isVisited
-        appState.setVisited(countryID, isVisited: newState)
-        
-        // Provide haptic feedback
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
-        
-        // Dismiss after a short delay to show the state change
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            dismiss()
-        }
+        appState.setVisited(countryID, isVisited: !isVisited)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { dismiss() }
     }
-    
+
     private func toggleWantToVisit() {
-        let newState = !wantToVisit
-        appState.setWantToVisit(countryID, wantToVisit: newState)
-        
-        // Provide haptic feedback
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
-        
-        // Dismiss after a short delay to show the state change
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            dismiss()
-        }
+        appState.setWantToVisit(countryID, wantToVisit: !wantToVisit)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { dismiss() }
     }
 }
 
@@ -753,6 +849,111 @@ struct MapContainerView: View {
             bitmojiAnnotations: bitmojiAnnotations,
             onBitmojiTapped: onBitmojiTapped
         )
+    }
+}
+
+// MARK: - Memories Sheet
+
+struct MapMemoriesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let visits: [String: Visit]
+    let countries: [Country]
+
+    private struct PhotoEntry: Identifiable {
+        let id: UUID
+        let photo: VisitPhoto
+        let country: Country
+    }
+
+    private var allPhotos: [PhotoEntry] {
+        countries.flatMap { country -> [PhotoEntry] in
+            guard let visit = visits[country.id], visit.isVisited else { return [] }
+            return visit.photos.map { PhotoEntry(id: $0.id, photo: $0, country: country) }
+        }
+        .sorted { $0.photo.createdAt > $1.photo.createdAt }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Memories")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            .padding(.bottom, 16)
+
+            if allPhotos.isEmpty {
+                Spacer()
+                VStack(spacing: 12) {
+                    Image(systemName: "photo.stack")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                    Text("No memories yet")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                    Text("Add photos when marking countries\nas visited to see them here")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .multilineTextAlignment(.center)
+                }
+                Spacer()
+            } else {
+                ScrollView {
+                    LazyVGrid(
+                        columns: [GridItem(.flexible(), spacing: 3), GridItem(.flexible(), spacing: 3)],
+                        spacing: 3
+                    ) {
+                        ForEach(allPhotos) { entry in
+                            GeometryReader { geo in
+                                ZStack(alignment: .bottomLeading) {
+                                    if let uiImage = UIImage(data: entry.photo.imageData) {
+                                        Image(uiImage: uiImage)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: geo.size.width, height: geo.size.width)
+                                            .clipped()
+                                    } else {
+                                        Rectangle()
+                                            .fill(Color(hex: "#F3F3F3"))
+                                            .frame(width: geo.size.width, height: geo.size.width)
+                                    }
+
+                                    LinearGradient(
+                                        colors: [.clear, .black.opacity(0.55)],
+                                        startPoint: .center,
+                                        endPoint: .bottom
+                                    )
+
+                                    HStack(spacing: 4) {
+                                        Text(entry.country.flagEmoji)
+                                            .font(.system(size: 13))
+                                        Text(entry.country.name)
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                            .lineLimit(1)
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.bottom, 8)
+                                }
+                            }
+                            .aspectRatio(1, contentMode: .fill)
+                        }
+                    }
+                    .padding(.bottom, 20)
+                }
+            }
+        }
+        .background(Color(hex: "#F7F7F7"))
     }
 }
 

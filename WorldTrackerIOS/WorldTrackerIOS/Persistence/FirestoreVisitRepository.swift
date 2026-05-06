@@ -80,6 +80,27 @@ final class FirestoreVisitRepository {
         )
     }
 
+    /// Writes visit metadata atomically in a single Firestore write.
+    /// Photos are intentionally excluded — Firestore has a 1 MB document limit and
+    /// Base64-encoded images blow past it quickly. Photos live in local storage only.
+    func setVisit(_ visit: Visit) async throws {
+        let userID = try requireUserID()
+        let ref = db.collection("users")
+            .document(userID)
+            .collection("visits")
+            .document(visit.countryId)
+
+        let data: [String: Any] = [
+            "isVisited": visit.isVisited,
+            "wantToVisit": visit.wantToVisit,
+            "visitedDate": visit.visitedDate as Any,
+            "notes": visit.notes,
+            "updatedAt": Timestamp(date: visit.updatedAt)
+        ]
+
+        try await setData(data, for: ref)
+    }
+
     func updateNotes(_ countryId: String, notes: String) async throws {
         let userID = try requireUserID()
 
