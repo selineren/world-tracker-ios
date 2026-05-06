@@ -218,12 +218,15 @@ final class SyncService {
     }
 
     private func saveToLocal(_ visit: Visit) throws {
-        // Photos are local-only (not synced to Firestore), so always preserve whatever
-        // photos are already stored on this device.
-        var mergedVisit = visit
-        let existingVisit = try? localRepository.visit(for: visit.countryId)
-        mergedVisit.photos = existingVisit?.photos ?? []
-        try localRepository.upsert(mergedVisit)
+        var merged = visit
+        // If the cloud document has no photos (e.g. written by an older app version before
+        // photo sync was added), fall back to whatever is already on this device so we don't
+        // silently wipe locally-stored photos.
+        if merged.photos.isEmpty {
+            let existing = try? localRepository.visit(for: visit.countryId)
+            merged.photos = existing?.photos ?? []
+        }
+        try localRepository.upsert(merged)
     }
 }
 
