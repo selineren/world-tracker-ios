@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import FirebaseCore
 import FirebaseAuth
+import GoogleSignIn
 import CoreText
 
 @main
@@ -21,6 +22,11 @@ struct WorldTrackerIOSApp: App {
     init() {
         Self.registerFonts()
         FirebaseApp.configure()
+
+        // Configure Google Sign-In with the client ID from GoogleService-Info.plist
+        if let clientID = FirebaseApp.app()?.options.clientID {
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        }
 
         do {
             // Create model configuration with migration options
@@ -82,6 +88,9 @@ struct WorldTrackerIOSApp: App {
                 .environmentObject(authService)
                 .task(id: authService.authState) {
                     await handleAuthStateChange()
+                }
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
                 }
         }
         .modelContainer(container)

@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "04ACF9D42F4E45E0004448FC"
-               BuildableName = "WorldTrackerIOS.app"
+               BuildableName = "World Tracker.app"
                BlueprintName = "WorldTrackerIOS"
                ReferencedContainer = "container:WorldTrackerIOS.xcodeproj">
             </BuildableReference>
@@ -46,7 +46,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "04ACF9D42F4E45E0004448FC"
-            BuildableName = "WorldTrackerIOS.app"
+            BuildableName = "World Tracker.app"
             BlueprintName = "WorldTrackerIOS"
             ReferencedContainer = "container:WorldTrackerIOS.xcodeproj">
          </BuildableReference>
@@ -63,7 +63,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "04ACF9D42F4E45E0004448FC"
-            BuildableName = "WorldTrackerIOS.app"
+            BuildableName = "World Tracker.app"
             BlueprintName = "WorldTrackerIOS"
             ReferencedContainer = "container:WorldTrackerIOS.xcodeproj">
          </BuildableReference>
