@@ -23,6 +23,11 @@ struct WorldTrackerIOSApp: App {
         Self.registerFonts()
         FirebaseApp.configure()
 
+        // Configure Google Sign-In with the client ID from GoogleService-Info.plist
+        if let clientID = FirebaseApp.app()?.options.clientID {
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        }
+
         do {
             // Create model configuration with migration options
             let schema = Schema([VisitEntity.self])
