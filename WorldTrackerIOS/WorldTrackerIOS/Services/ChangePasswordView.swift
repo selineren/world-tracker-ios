@@ -54,16 +54,15 @@ struct ChangePasswordView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 Text("Change Password")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 26))
-                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 .buttonStyle(.plain)
                 .disabled(isSubmitting)
@@ -79,7 +78,7 @@ struct ChangePasswordView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("VERIFY IDENTITY")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                             .tracking(0.8)
                             .padding(.horizontal, 4)
 
@@ -90,13 +89,13 @@ struct ChangePasswordView: View {
                                 show: $showCurrent
                             )
                         }
-                        .background(Color.white)
+                        .background(Color.appCard)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
 
                         Text("Enter your current password to continue")
                             .font(.system(size: 12))
-                            .foregroundStyle(Color(hex: "#BBBBBB"))
+                            .foregroundStyle(Color.appInk3)
                             .padding(.horizontal, 4)
                     }
 
@@ -104,7 +103,7 @@ struct ChangePasswordView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("NEW PASSWORD")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                             .tracking(0.8)
                             .padding(.horizontal, 4)
 
@@ -129,22 +128,22 @@ struct ChangePasswordView: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: passwordsMatch ? "checkmark.circle.fill" : "xmark.circle.fill")
                                         .font(.system(size: 15))
-                                        .foregroundStyle(passwordsMatch ? Color(hex: "#2E9E5B") : Color(hex: "#CCCCCC"))
+                                        .foregroundStyle(passwordsMatch ? Color.appSuccess : Color.appInk3)
                                     Text(passwordsMatch ? "Passwords match" : (validationHint ?? "Passwords do not match"))
                                         .font(.system(size: 13))
-                                        .foregroundStyle(passwordsMatch ? Color(hex: "#2E9E5B") : Color(hex: "#9E9E9E"))
+                                        .foregroundStyle(passwordsMatch ? Color.appSuccess : Color.appInk3)
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
                             }
                         }
-                        .background(Color.white)
+                        .background(Color.appCard)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
 
                         Text("Password must be at least 6 characters")
                             .font(.system(size: 12))
-                            .foregroundStyle(Color(hex: "#BBBBBB"))
+                            .foregroundStyle(Color.appInk3)
                             .padding(.horizontal, 4)
                     }
 
@@ -172,7 +171,7 @@ struct ChangePasswordView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 18)
-                            .background(isFormValid ? Color(hex: "#1b1b1b") : Color(hex: "#CCCCCC"))
+                            .background(isFormValid ? Color.appSurface : Color.appLine)
                             .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -181,7 +180,7 @@ struct ChangePasswordView: View {
                         Button { dismiss() } label: {
                             Text("Cancel")
                                 .font(.system(size: 15))
-                                .foregroundStyle(Color(hex: "#9E9E9E"))
+                                .foregroundStyle(Color.appInk3)
                         }
                         .buttonStyle(.plain)
                         .disabled(isSubmitting)
@@ -191,7 +190,7 @@ struct ChangePasswordView: View {
                 .padding(.bottom, 32)
             }
         }
-        .background(Color(hex: "#F7F7F7"))
+        .background(Color.appPaper)
     }
 
     // MARK: - Password Field
@@ -206,7 +205,7 @@ struct ChangePasswordView: View {
                 }
             }
             .font(.system(size: 15))
-            .foregroundStyle(Color(hex: "#1b1b1b"))
+            .foregroundStyle(Color.appInk)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
 
@@ -215,7 +214,7 @@ struct ChangePasswordView: View {
             } label: {
                 Image(systemName: show.wrappedValue ? "eye.fill" : "eye.slash.fill")
                     .font(.system(size: 16))
-                    .foregroundStyle(show.wrappedValue ? Color(hex: "#6B6B6B") : Color(hex: "#CCCCCC"))
+                    .foregroundStyle(show.wrappedValue ? Color.appInk2 : Color.appInk3)
             }
             .buttonStyle(.plain)
         }

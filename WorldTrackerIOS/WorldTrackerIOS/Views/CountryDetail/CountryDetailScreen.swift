@@ -72,7 +72,7 @@ struct CountryDetailScreen: View {
             .padding(.top, 16)
             .padding(.bottom, 40)
         }
-        .background(Color(hex: "#F7F7F7"))
+        .background(Color.appPaper)
         .navigationTitle(country.name)
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: selectedPhotoItem) { _, newValue in
@@ -91,7 +91,7 @@ struct CountryDetailScreen: View {
         }
     }
 
-    // MARK: - Hero Card (dark, Compare-style)
+    // MARK: - Hero Card (intentionally dark in both modes)
 
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -116,7 +116,7 @@ struct CountryDetailScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(Color(hex: "#111111"))
+        .background(Color.appSurface)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
@@ -155,10 +155,9 @@ struct CountryDetailScreen: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Travel Status")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
 
             VStack(spacing: 0) {
-                // Visited row
                 Button {
                     withAnimation(.spring(response: 0.3)) {
                         isVisited.wrappedValue.toggle()
@@ -167,18 +166,17 @@ struct CountryDetailScreen: View {
                 } label: {
                     statusRow(
                         icon: "checkmark.circle.fill",
-                        iconBg: isVisited.wrappedValue ? Color(hex: "#F0FFF4") : Color(hex: "#F3F3F3"),
-                        iconFg: isVisited.wrappedValue ? Color(hex: "#2E9E5B") : Color(hex: "#CCCCCC"),
+                        iconBg: isVisited.wrappedValue ? Color.appSuccess.opacity(0.12) : Color.appInk.opacity(0.06),
+                        iconFg: isVisited.wrappedValue ? Color.appSuccess : Color.appInk3,
                         title: "Visited",
                         checked: isVisited.wrappedValue,
-                        checkColor: Color(hex: "#2E9E5B")
+                        checkColor: Color.appSuccess
                     )
                 }
                 .buttonStyle(.plain)
 
                 Divider().padding(.horizontal, 16)
 
-                // Want to visit row
                 Button {
                     withAnimation(.spring(response: 0.3)) {
                         if !isVisited.wrappedValue {
@@ -188,10 +186,10 @@ struct CountryDetailScreen: View {
                 } label: {
                     statusRow(
                         icon: "star.fill",
-                        iconBg: wantToVisitBinding.wrappedValue ? Color(hex: "#EAF6FE") : Color(hex: "#F3F3F3"),
-                        iconFg: wantToVisitBinding.wrappedValue ? Color(hex: "#4A90D9") : Color(hex: "#CCCCCC"),
+                        iconBg: wantToVisitBinding.wrappedValue ? Color(hex: "#4A90D9").opacity(0.12) : Color.appInk.opacity(0.06),
+                        iconFg: wantToVisitBinding.wrappedValue ? Color(hex: "#4A90D9") : Color.appInk3,
                         title: "Want to Visit",
-                        titleColor: isVisited.wrappedValue ? Color(hex: "#CCCCCC") : Color(hex: "#1b1b1b"),
+                        titleColor: isVisited.wrappedValue ? Color.appInk3 : Color.appInk,
                         checked: wantToVisitBinding.wrappedValue,
                         checkColor: Color(hex: "#4A90D9")
                     )
@@ -199,13 +197,12 @@ struct CountryDetailScreen: View {
                 .buttonStyle(.plain)
                 .disabled(isVisited.wrappedValue)
 
-                // Date row (visible when visited)
                 if isVisited.wrappedValue {
                     Divider().padding(.horizontal, 16)
 
                     HStack(spacing: 14) {
                         ZStack {
-                            Circle().fill(Color(hex: "#EAF4FF")).frame(width: 40, height: 40)
+                            Circle().fill(Color(hex: "#4A90D9").opacity(0.12)).frame(width: 40, height: 40)
                             Image(systemName: "calendar")
                                 .font(.system(size: 16))
                                 .foregroundStyle(Color(hex: "#4A90D9"))
@@ -213,10 +210,10 @@ struct CountryDetailScreen: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Visit Date")
                                 .font(.system(size: 12))
-                                .foregroundStyle(Color(hex: "#9E9E9E"))
+                                .foregroundStyle(Color.appInk3)
                             Text(visitDate.wrappedValue, format: .dateTime.month(.wide).day().year())
                                 .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                                .foregroundStyle(Color.appInk)
                         }
                         Spacer()
                         Button {
@@ -224,7 +221,7 @@ struct CountryDetailScreen: View {
                         } label: {
                             Text("Edit")
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#9E9E9E"))
+                                .foregroundStyle(Color.appInk3)
                         }
                         .buttonStyle(.plain)
                     }
@@ -240,7 +237,7 @@ struct CountryDetailScreen: View {
                     }
                 }
             }
-            .background(Color.white)
+            .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
@@ -251,7 +248,7 @@ struct CountryDetailScreen: View {
         iconBg: Color,
         iconFg: Color,
         title: String,
-        titleColor: Color = Color(hex: "#1b1b1b"),
+        titleColor: Color = Color.appInk,
         checked: Bool,
         checkColor: Color
     ) -> some View {
@@ -283,25 +280,25 @@ struct CountryDetailScreen: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Notes")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
 
             ZStack(alignment: .topLeading) {
                 if notes.wrappedValue.isEmpty {
                     Text("Add travel highlights, tips, and hidden gems for \(country.name)...")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                        .foregroundStyle(Color.appInk3)
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
                         .allowsHitTesting(false)
                 }
                 TextEditor(text: notes)
                     .font(.system(size: 14))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                     .frame(minHeight: 100)
                     .padding(12)
                     .scrollContentBackground(.hidden)
             }
-            .background(Color.white)
+            .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
@@ -314,7 +311,7 @@ struct CountryDetailScreen: View {
             HStack {
                 Text("Photos")
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                 Spacer()
                 PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                     HStack(spacing: 6) {
@@ -323,10 +320,10 @@ struct CountryDetailScreen: View {
                         Text("Add Photo")
                             .font(.system(size: 13, weight: .semibold))
                     }
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(Color(hex: "#EEEEEE"))
+                    .background(Color.appPaper2)
                     .clipShape(Capsule())
                 }
             }
@@ -335,14 +332,14 @@ struct CountryDetailScreen: View {
                 VStack(spacing: 12) {
                     Image(systemName: "photo.stack")
                         .font(.system(size: 36))
-                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                        .foregroundStyle(Color.appInk3)
                     Text("No photos yet")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(40)
-                .background(Color.white)
+                .background(Color.appCard)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
             } else {
@@ -383,7 +380,7 @@ struct CountryDetailScreen: View {
     private func photoCell(photo: VisitPhoto, size: CGFloat, showOverlay: Bool, remaining: Int, onTap: @escaping () -> Void) -> some View {
         Button { onTap() } label: {
             ZStack {
-                Color(hex: "#EEEEEE")
+                Color.appPaper2
                 if let uiImage = UIImage(data: photo.imageData) {
                     Image(uiImage: uiImage)
                         .resizable()
@@ -536,16 +533,15 @@ struct AllPhotosSheetView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 Text("\(photos.count) Photos")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 26))
-                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 .buttonStyle(.plain)
             }
@@ -575,7 +571,7 @@ struct AllPhotosSheetView: View {
                 .padding(.bottom, 20)
             }
         }
-        .background(Color(hex: "#F7F7F7"))
+        .background(Color.appPaper)
         .fullScreenCover(item: $selectedPhoto) { photo in
             PhotoFullScreenView(photo: photo) {
                 onDelete(photo.id)
@@ -586,7 +582,7 @@ struct AllPhotosSheetView: View {
 
     private func photoThumb(_ photo: VisitPhoto) -> some View {
         ZStack {
-            Color(hex: "#EEEEEE")
+            Color.appPaper2
             if let uiImage = UIImage(data: photo.imageData) {
                 Image(uiImage: uiImage)
                     .resizable()

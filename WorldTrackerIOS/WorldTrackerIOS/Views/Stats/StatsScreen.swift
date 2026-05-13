@@ -138,7 +138,7 @@ struct StatsScreen: View {
                     Spacer().frame(height: 32)
                 }
             }
-            .background(Color(hex: "#F7F7F7"))
+            .background(Color.appPaper)
             .navigationTitle("Stats")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(item: $selectedAchievement) { achievement in
@@ -158,16 +158,16 @@ struct StatsScreen: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("\(visitedCountriesCount) / \(totalCountriesCount) Countries")
                     .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                     .tracking(-0.5)
 
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(hex: "#EEEEEE"))
+                            .fill(Color.appLine)
                             .frame(height: 4)
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(hex: "#1b1b1b"))
+                            .fill(Color.appInk)
                             .frame(
                                 width: max(geo.size.width * (visitedPercentage / 100), visitedCountriesCount > 0 ? 6 : 0),
                                 height: 4
@@ -178,10 +178,10 @@ struct StatsScreen: View {
 
                 Text(String(format: "%.1f%% of the world", visitedPercentage))
                     .font(.system(size: 13))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
             }
             .padding(16)
-            .background(Color.white)
+            .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
@@ -211,19 +211,19 @@ struct StatsScreen: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
                 .font(.system(size: 40, weight: .bold))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
                 .tracking(-0.5)
             Text(label)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
                 .padding(.top, 2)
             Text(sublabel)
                 .font(.system(size: 12))
-                .foregroundStyle(Color(hex: "#9E9E9E"))
+                .foregroundStyle(Color.appInk3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color.white)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
     }
@@ -251,13 +251,13 @@ struct StatsScreen: View {
                                         .offset(x: 2, y: -2)
                                 }
                                 .padding(10)
-                                .background(Color.white)
+                                .background(Color.appCard)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
 
                                 Text(country.name)
                                     .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                                    .foregroundStyle(Color.appInk)
                                     .lineLimit(1)
                             }
                             .frame(width: 70)
@@ -287,13 +287,13 @@ struct StatsScreen: View {
                                     .font(.system(size: 34))
                                     .frame(width: 50, height: 50)
                                     .padding(10)
-                                    .background(Color.white)
+                                    .background(Color.appCard)
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
                                     .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
 
                                 Text(country.name)
                                     .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                                    .foregroundStyle(Color.appInk)
                                     .lineLimit(1)
                             }
                             .frame(width: 70)
@@ -320,16 +320,16 @@ struct StatsScreen: View {
                     HStack(spacing: 12) {
                         Text(continentShortName(item.continent))
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .foregroundStyle(Color.appInk)
                             .frame(width: 84, alignment: .leading)
 
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color(hex: "#EEEEEE"))
+                                    .fill(Color.appLine)
                                     .frame(height: 6)
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color(hex: "#1b1b1b"))
+                                    .fill(Color.appInk)
                                     .frame(
                                         width: max(geo.size.width * (item.percentage / 100), item.visited > 0 ? 6 : 0),
                                         height: 6
@@ -340,14 +340,14 @@ struct StatsScreen: View {
 
                         Text("\(item.visited)/\(item.total)")
                             .font(.system(size: 12))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                             .frame(width: 38, alignment: .trailing)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
                 }
             }
-            .background(Color.white)
+            .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
@@ -407,30 +407,30 @@ struct StatsScreen: View {
                     .font(.system(size: 64))
                     .frame(maxWidth: .infinity)
                     .frame(height: 120)
-                    .background(Color(hex: "#F3F3F3"))
+                    .background(Color.appPaper2)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(country.name)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                 if !notes.isEmpty {
                     Text("\"\(notes)\"")
                         .font(.system(size: 13))
                         .italic()
-                        .foregroundStyle(Color(hex: "#6B6B6B"))
+                        .foregroundStyle(Color.appInk2)
                         .lineLimit(2)
                 }
                 if let date {
                     Text(date.formatted(date: .abbreviated, time: .omitted).uppercased())
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                         .tracking(0.5)
                         .padding(.top, 2)
                 }
             }
             .padding(16)
         }
-        .background(Color.white)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         .contentShape(Rectangle())
@@ -441,7 +441,7 @@ struct StatsScreen: View {
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 17, weight: .bold))
-            .foregroundStyle(Color(hex: "#1b1b1b"))
+            .foregroundStyle(Color.appInk)
     }
 
     private func continentShortName(_ continent: Continent) -> String {
@@ -492,12 +492,12 @@ struct StatsScreen: View {
                         .font(.system(size: 30))
                     Text(label)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .foregroundStyle(Color.appInk)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                 }
                 .frame(width: 90, height: 90)
-                .background(achievement.isUnlocked ? Color(hex: "#FFF9E6") : Color(hex: "#F3F3F3"))
+                .background(achievement.isUnlocked ? Color.appGoldBg : Color.appPaper2)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
                 .opacity(achievement.isUnlocked ? 1.0 : 0.6)
@@ -512,7 +512,6 @@ struct StatsScreen: View {
 
         var body: some View {
             VStack(spacing: 0) {
-                // Header
                 VStack(spacing: 12) {
                     Text(achievement.isUnlocked ? "🏆" : "🔒")
                         .font(.system(size: 56))
@@ -520,19 +519,18 @@ struct StatsScreen: View {
 
                     Text(achievement.badgeLabel)
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .foregroundStyle(Color.appInk)
 
                     Text(achievement.isUnlocked ? "UNLOCKED" : "LOCKED")
                         .font(.system(size: 11, weight: .bold))
                         .tracking(1.5)
-                        .foregroundStyle(achievement.isUnlocked ? Color(hex: "#1E7F4E") : Color(hex: "#9E9E9E"))
+                        .foregroundStyle(achievement.isUnlocked ? Color(hex: "#1E7F4E") : Color.appInk3)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 5)
-                        .background(achievement.isUnlocked ? Color(hex: "#1E7F4E").opacity(0.1) : Color(hex: "#F3F3F3"))
+                        .background(achievement.isUnlocked ? Color(hex: "#1E7F4E").opacity(0.1) : Color.appPaper2)
                         .clipShape(Capsule())
                 }
 
-                // Info card
                 VStack(alignment: .leading, spacing: 16) {
                     infoRow(title: "ABOUT", body: achievement.badgeDescription)
                     if !achievement.isUnlocked {
@@ -542,7 +540,7 @@ struct StatsScreen: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
-                .background(Color(hex: "#F7F7F7"))
+                .background(Color.appPaper)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .padding(.horizontal, 24)
                 .padding(.top, 24)
@@ -550,18 +548,18 @@ struct StatsScreen: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity)
-            .background(Color.white)
+            .background(Color.appCard)
         }
 
         private func infoRow(title: String, body: String) -> some View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
                     .tracking(0.8)
                 Text(body)
                     .font(.system(size: 15))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

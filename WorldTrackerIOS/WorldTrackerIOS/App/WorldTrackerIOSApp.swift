@@ -37,20 +37,20 @@ struct WorldTrackerIOSApp: App {
                 allowsSave: true,
                 cloudKitDatabase: .none
             )
-            
+
             container = try ModelContainer(
                 for: schema,
                 configurations: [modelConfiguration]
             )
             let context = ModelContext(container)
-            
+
             let localRepo = SwiftDataVisitRepository(context: context)
             let cloudRepo = FirestoreVisitRepository()
             let syncService = SyncService(
                 localRepository: localRepo,
                 cloudRepository: cloudRepo
             )
-            
+
             _appState = StateObject(
                 wrappedValue: AppState(
                     repository: localRepo,
@@ -95,36 +95,28 @@ struct WorldTrackerIOSApp: App {
         }
         .modelContainer(container)
     }
-    
+
     @MainActor
     private func handleAuthStateChange() async {
         switch authService.authState {
         case .signedIn:
-            // User signed in - load data and sync
             await appState.handleSignIn()
         case .signedOut:
-            // User signed out - clear data
             appState.handleSignOut()
         case .unknown:
-            // Initial state - do nothing
             break
         }
     }
 }
 // MARK: - Auth-Gated Root View
 
-/// Root view that conditionally shows authentication or main app content
-/// based on the user's sign-in status.
 struct AuthGatedRootView: View {
     @EnvironmentObject private var authService: AuthService
-    
+
     var body: some View {
         Group {
             switch authService.authState {
             case .signedIn:
-                // User is authenticated - show main app
-                // Use signInCounter to force recreation on each sign-in
-                // This ensures tab selection is reset to Map every time
                 RootTabView()
                     .id("signed-in-\(authService.signInCounter)")
                     .transition(.opacity)
@@ -133,9 +125,8 @@ struct AuthGatedRootView: View {
                         print("📱 Showing RootTabView (signed in)")
                         #endif
                     }
-                
+
             case .signedOut:
-                // User is not authenticated - show auth screen
                 AuthScreen()
                     .transition(.opacity)
                     .onAppear {
@@ -143,9 +134,8 @@ struct AuthGatedRootView: View {
                         print("📱 Showing AuthScreen (signed out)")
                         #endif
                     }
-                
+
             case .unknown:
-                // Initial state - show loading screen while Firebase checks session
                 LoadingView()
                     .transition(.opacity)
                     .onAppear {
@@ -160,11 +150,10 @@ struct AuthGatedRootView: View {
 }
 
 // MARK: - Loading View
-/// Displayed during initial app launch while Firebase checks authentication status
 private struct LoadingView: View {
     var body: some View {
         ZStack {
-            Color.white
+            Color.appPaper
                 .ignoresSafeArea()
 
             VStack(spacing: 32) {
@@ -174,7 +163,7 @@ private struct LoadingView: View {
                     .font(.custom("Inter", size: 16))
                     .fontWeight(.black)
                     .tracking(4)
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Color.appInk)
 
                 LoadingSpinner()
                     .padding(.top, 48)
@@ -200,7 +189,7 @@ private struct LoadingSpinner: View {
     var body: some View {
         Circle()
             .trim(from: 0.1, to: 0.9)
-            .stroke(Color.black, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            .stroke(Color.appInk, style: StrokeStyle(lineWidth: 2, lineCap: .round))
             .frame(width: 24, height: 24)
             .rotationEffect(.degrees(rotation))
             .onAppear {
@@ -210,5 +199,3 @@ private struct LoadingSpinner: View {
             }
     }
 }
-
-

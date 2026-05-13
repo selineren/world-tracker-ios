@@ -31,16 +31,15 @@ struct DeleteAccountView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 Text("Delete Account")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 26))
-                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 .buttonStyle(.plain)
                 .disabled(isDeleting)
@@ -56,14 +55,14 @@ struct DeleteAccountView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("THIS ACTION IS PERMANENT")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                             .tracking(0.8)
                             .padding(.horizontal, 4)
 
                         VStack(alignment: .leading, spacing: 0) {
                             Text("Deleting your account will:")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                                .foregroundStyle(Color.appInk)
                                 .padding(.horizontal, 16)
                                 .padding(.top, 16)
                                 .padding(.bottom, 12)
@@ -73,7 +72,7 @@ struct DeleteAccountView: View {
                             warningRow(
                                 icon: "xmark.circle.fill",
                                 iconColor: Color(hex: "#F9234D"),
-                                iconBg: Color(hex: "#FFF0F5"),
+                                iconBg: Color(hex: "#F9234D").opacity(0.12),
                                 text: "Remove all your travel data"
                             )
 
@@ -82,7 +81,7 @@ struct DeleteAccountView: View {
                             warningRow(
                                 icon: "trash.fill",
                                 iconColor: Color(hex: "#F9234D"),
-                                iconBg: Color(hex: "#FFF0F5"),
+                                iconBg: Color(hex: "#F9234D").opacity(0.12),
                                 text: "Delete your account permanently"
                             )
 
@@ -90,14 +89,14 @@ struct DeleteAccountView: View {
 
                             warningRow(
                                 icon: "exclamationmark.triangle.fill",
-                                iconColor: Color(hex: "#E6A817"),
-                                iconBg: Color(hex: "#FFF9E6"),
+                                iconColor: Color.appGold,
+                                iconBg: Color.appGold.opacity(0.12),
                                 text: "Cannot be recovered or undone"
                             )
 
                             Spacer(minLength: 4)
                         }
-                        .background(Color.white)
+                        .background(Color.appCard)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
                     }
@@ -106,7 +105,7 @@ struct DeleteAccountView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("VERIFY IDENTITY")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                             .tracking(0.8)
                             .padding(.horizontal, 4)
 
@@ -119,7 +118,7 @@ struct DeleteAccountView: View {
                                 }
                             }
                             .font(.system(size: 15))
-                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .foregroundStyle(Color.appInk)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
 
@@ -128,19 +127,19 @@ struct DeleteAccountView: View {
                             } label: {
                                 Image(systemName: showPassword ? "eye.fill" : "eye.slash.fill")
                                     .font(.system(size: 16))
-                                    .foregroundStyle(showPassword ? Color(hex: "#6B6B6B") : Color(hex: "#CCCCCC"))
+                                    .foregroundStyle(showPassword ? Color.appInk2 : Color.appInk3)
                             }
                             .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 16)
-                        .background(Color.white)
+                        .background(Color.appCard)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
 
                         Text("Enter your password to continue")
                             .font(.system(size: 12))
-                            .foregroundStyle(Color(hex: "#BBBBBB"))
+                            .foregroundStyle(Color.appInk3)
                             .padding(.horizontal, 4)
                     }
 
@@ -148,14 +147,14 @@ struct DeleteAccountView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("CONFIRM DELETION")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                             .tracking(0.8)
                             .padding(.horizontal, 4)
 
                         VStack(spacing: 0) {
                             TextField("Type DELETE to confirm", text: $confirmationText)
                                 .font(.system(size: 15))
-                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                                .foregroundStyle(Color.appInk)
                                 .autocorrectionDisabled()
                                 .textInputAutocapitalization(.characters)
                                 .padding(.horizontal, 16)
@@ -166,16 +165,16 @@ struct DeleteAccountView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: confirmationValid ? "checkmark.circle.fill" : "info.circle.fill")
                                     .font(.system(size: 15))
-                                    .foregroundStyle(confirmationValid ? Color(hex: "#2E9E5B") : Color(hex: "#CCCCCC"))
+                                    .foregroundStyle(confirmationValid ? Color.appSuccess : Color.appInk3)
                                 Text(confirmationValid ? "Confirmed" : "Type exactly: DELETE")
                                     .font(.system(size: 13))
-                                    .foregroundStyle(confirmationValid ? Color(hex: "#2E9E5B") : Color(hex: "#9E9E9E"))
+                                    .foregroundStyle(confirmationValid ? Color.appSuccess : Color.appInk3)
                                 Spacer()
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
                         }
-                        .background(Color.white)
+                        .background(Color.appCard)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
                     }
@@ -204,7 +203,7 @@ struct DeleteAccountView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 18)
-                            .background(isFormValid ? Color(hex: "#F9234D") : Color(hex: "#CCCCCC"))
+                            .background(isFormValid ? Color(hex: "#F9234D") : Color.appLine)
                             .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -213,7 +212,7 @@ struct DeleteAccountView: View {
                         Button { dismiss() } label: {
                             Text("Cancel")
                                 .font(.system(size: 15))
-                                .foregroundStyle(Color(hex: "#9E9E9E"))
+                                .foregroundStyle(Color.appInk3)
                         }
                         .buttonStyle(.plain)
                         .disabled(isDeleting)
@@ -223,7 +222,7 @@ struct DeleteAccountView: View {
                 .padding(.bottom, 32)
             }
         }
-        .background(Color(hex: "#F7F7F7"))
+        .background(Color.appPaper)
     }
 
     // MARK: - Warning Row
@@ -238,7 +237,7 @@ struct DeleteAccountView: View {
             }
             Text(text)
                 .font(.system(size: 14))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -289,10 +288,8 @@ struct DeleteAccountView: View {
             }
         } else if error.domain == "FIRFirestoreErrorDomain" {
             switch error.code {
-            case 7:
-                return "Permission error. Please try signing out and back in"
-            case 14:
-                return "Network error. Please check your connection and try again"
+            case 7:  return "Permission error. Please try signing out and back in"
+            case 14: return "Network error. Please check your connection and try again"
             default:
                 let message = error.localizedDescription.lowercased()
                 if message.contains("network") || message.contains("offline") || message.contains("connection") {

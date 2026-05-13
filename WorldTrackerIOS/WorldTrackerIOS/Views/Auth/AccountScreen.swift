@@ -100,7 +100,7 @@ struct AccountScreen: View {
                     } label: {
                         Text("DELETE ACCOUNT")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#BBBBBB"))
+                            .foregroundStyle(Color.appInk3)
                             .tracking(1.2)
                     }
                     .padding(.top, 16)
@@ -115,7 +115,7 @@ struct AccountScreen: View {
                     }
                 }
             }
-            .background(Color(hex: "#F7F7F7"))
+            .background(Color.appPaper)
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingChangePassword) { ChangePasswordView() }
@@ -149,7 +149,7 @@ struct AccountScreen: View {
         VStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(Color(hex: "#1b1b1b"))
+                    .fill(Color.appSurface)
                     .frame(width: 80, height: 80)
                 Text(profileInitials)
                     .font(.system(size: 28, weight: .bold))
@@ -159,12 +159,12 @@ struct AccountScreen: View {
             VStack(spacing: 4) {
                 Text(authService.displayName)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
 
                 if authService.displayName != authService.userEmail {
                     Text(authService.userEmail)
                         .font(.system(size: 13))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                 }
             }
 
@@ -180,10 +180,10 @@ struct AccountScreen: View {
     private func statPill(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(Color(hex: "#1b1b1b"))
+            .foregroundStyle(Color.appInk)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(Color.white)
+            .background(Color.appCard)
             .clipShape(Capsule())
             .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
     }
@@ -194,25 +194,24 @@ struct AccountScreen: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Travel overview")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
 
             VStack(spacing: 16) {
-                // Visited countries row
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 12) {
-                        iconCircle("scope", bg: Color(hex: "#FFF0F5"), fg: Color(hex: "#F9234D"))
+                        iconCircle("scope", bg: Color(hex: "#F9234D").opacity(0.12), fg: Color(hex: "#F9234D"))
                         Text("\(visitedCount) Countries Visited")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .foregroundStyle(Color.appInk)
                         Spacer()
                         Text(String(format: "%.1f%%", visitedPercentage))
                             .font(.system(size: 13))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                     }
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(Color(hex: "#EEEEEE"))
+                                .fill(Color.appLine)
                                 .frame(height: 4)
                             RoundedRectangle(cornerRadius: 2)
                                 .fill(Color(hex: "#F9234D"))
@@ -224,22 +223,21 @@ struct AccountScreen: View {
 
                 Divider()
 
-                // Wishlist row
                 HStack(spacing: 12) {
-                    iconCircle("star.fill", bg: Color(hex: "#EAF6FE"), fg: Color(hex: "#4A90D9"))
+                    iconCircle("star.fill", bg: Color(hex: "#4A90D9").opacity(0.12), fg: Color(hex: "#4A90D9"))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(wishlistCount) on Wishlist")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .foregroundStyle(Color.appInk)
                         Text("Your next destinations")
                             .font(.system(size: 13))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                     }
                     Spacer()
                 }
             }
             .padding(16)
-            .background(Color.white)
+            .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
@@ -251,18 +249,18 @@ struct AccountScreen: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Travel highlights")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
 
             VStack(spacing: 16) {
                 HStack(spacing: 12) {
-                    iconCircle("calendar", bg: Color(hex: "#F0FFF4"), fg: Color(hex: "#2E9E5B"))
+                    iconCircle("calendar", bg: Color.appSuccess.opacity(0.12), fg: Color.appSuccess)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(visitedThisYear) Visited This Year")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .foregroundStyle(Color.appInk)
                         Text(visitedThisYear > 0 ? "Active traveler" : "Start your \(Calendar.current.component(.year, from: Date())) travels")
                             .font(.system(size: 13))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                     }
                     Spacer()
                 }
@@ -270,20 +268,20 @@ struct AccountScreen: View {
                 Divider()
 
                 HStack(spacing: 12) {
-                    iconCircle("trophy.fill", bg: Color(hex: "#FFF9E6"), fg: Color(hex: "#E6A817"))
+                    iconCircle("trophy.fill", bg: Color.appGold.opacity(0.12), fg: Color.appGold)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(achievementSummary.unlocked)/\(achievementSummary.total) Achievements")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .foregroundStyle(Color.appInk)
                         Text(achievementSummary.unlocked > 0 ? "Nomad status" : "Unlock your first achievement")
                             .font(.system(size: 13))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                     }
                     Spacer()
                 }
             }
             .padding(16)
-            .background(Color.white)
+            .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
@@ -295,17 +293,17 @@ struct AccountScreen: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Privacy")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
 
             HStack(spacing: 12) {
-                iconCircle("person.2.fill", bg: Color(hex: "#F3F3F3"), fg: Color(hex: "#6B6B6B"))
+                iconCircle("person.2.fill", bg: Color.appInk.opacity(0.06), fg: Color.appInk2)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Travel Comparison")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .foregroundStyle(Color.appInk)
                     Text(allowComparison ? "Others can compare with you" : "Your travel data is private")
                         .font(.system(size: 13))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 Spacer()
                 Toggle("", isOn: Binding(
@@ -320,7 +318,7 @@ struct AccountScreen: View {
                 .disabled(isLoadingProfile || isSavingComparison)
             }
             .padding(16)
-            .background(Color.white)
+            .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
@@ -332,21 +330,21 @@ struct AccountScreen: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Settings")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
 
             Button { showingChangePassword = true } label: {
                 HStack(spacing: 12) {
-                    iconCircle("key.fill", bg: Color(hex: "#F3F3F3"), fg: Color(hex: "#6B6B6B"))
+                    iconCircle("key.fill", bg: Color.appInk.opacity(0.06), fg: Color.appInk2)
                     Text("Change Password")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .foregroundStyle(Color.appInk)
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 .padding(16)
-                .background(Color.white)
+                .background(Color.appCard)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
             }
@@ -367,10 +365,10 @@ struct AccountScreen: View {
         } label: {
             Text("Sign Out")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
-                .background(Color.white)
+                .background(Color.appCard)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
