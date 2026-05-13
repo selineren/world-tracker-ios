@@ -17,12 +17,10 @@ struct CountriesScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Search bar
                     searchBar
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
 
-                    // Continent filter chips
                     continentChips
                         .padding(.top, 12)
 
@@ -41,7 +39,7 @@ struct CountriesScreen: View {
                 }
                 .padding(.bottom, 32)
             }
-            .background(Color(hex: "#F7F7F7"))
+            .background(Color.appPaper)
             .navigationTitle("Countries")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { vm.load() }
@@ -54,22 +52,22 @@ struct CountriesScreen: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 16))
-                .foregroundStyle(Color(hex: "#6B6B6B"))
+                .foregroundStyle(Color.appInk2)
             TextField("Search countries...", text: $vm.searchText)
                 .font(.system(size: 16))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
             if !vm.searchText.isEmpty {
                 Button { vm.searchText = "" } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)
         .frame(height: 44)
-        .background(Color(hex: "#EEEEEE"))
+        .background(Color.appPaper2)
         .clipShape(Capsule())
     }
 
@@ -95,12 +93,12 @@ struct CountriesScreen: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(isSelected ? .white : Color(hex: "#6B6B6B"))
+                .foregroundStyle(isSelected ? .white : Color.appInk2)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 8)
-                .background(isSelected ? Color.black : Color.white)
+                .background(isSelected ? Color.appSurface : Color.appCard)
                 .clipShape(Capsule())
-                .overlay(Capsule().stroke(isSelected ? Color.clear : Color(hex: "#E2E2E2"), lineWidth: 1))
+                .overlay(Capsule().stroke(isSelected ? Color.clear : Color.appLine, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -116,7 +114,7 @@ struct CountriesScreen: View {
 
         return Text("\(continentsWithVisit) CONTINENTS · \(totalVisited) COUNTRIES VISITED")
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(Color(hex: "#9E9E9E"))
+            .foregroundStyle(Color.appInk3)
             .tracking(0.5)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -153,7 +151,7 @@ struct CountriesScreen: View {
             if vm.filteredCountries.isEmpty {
                 Text("No countries match \"\(vm.searchText)\"")
                     .font(.system(size: 14))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
                     .padding(.top, 40)
                     .frame(maxWidth: .infinity)
             } else {
@@ -191,14 +189,13 @@ private struct ContinentCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(continent.displayName)
                 .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(Color.appInk)
                 .tracking(-0.3)
 
-            // Progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(Color(hex: "#F0F0F0"))
+                        .fill(Color.appLine)
                         .frame(height: 4)
                     RoundedRectangle(cornerRadius: 2)
                         .fill(continentColor)
@@ -214,12 +211,12 @@ private struct ContinentCard: View {
                     .tracking(0.3)
                 Text("of \(totalCount) \(totalCount == 1 ? "country" : "countries")")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
             }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
     }
@@ -281,28 +278,24 @@ struct ContinentCountriesView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Search
                 searchBar
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
 
-                // Filter chips
                 filterChips
                     .padding(.top, 12)
 
-                // Summary
                 Text("\(visitedCount) of \(countries.count) countries visited in \(continent.displayName)")
                     .font(.system(size: 13))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 8)
 
-                // Alphabetical sections
                 if filtered.isEmpty {
                     Text("No countries match your filter")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
                 } else {
@@ -311,7 +304,7 @@ struct ContinentCountriesView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(group.letter)
                                     .font(.system(size: 17, weight: .black))
-                                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                                    .foregroundStyle(Color.appInk)
                                     .padding(.horizontal, 16)
 
                                 VStack(spacing: 8) {
@@ -337,7 +330,7 @@ struct ContinentCountriesView: View {
                 }
             }
         }
-        .background(Color(hex: "#F7F7F7"))
+        .background(Color.appPaper)
         .navigationTitle(continent.displayName)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -346,22 +339,22 @@ struct ContinentCountriesView: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 16))
-                .foregroundStyle(Color(hex: "#6B6B6B"))
+                .foregroundStyle(Color.appInk2)
             TextField("Search \(continent.displayName)...", text: $searchText)
                 .font(.system(size: 16))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
             if !searchText.isEmpty {
                 Button { searchText = "" } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)
         .frame(height: 44)
-        .background(Color(hex: "#EEEEEE"))
+        .background(Color.appPaper2)
         .clipShape(Capsule())
     }
 
@@ -374,12 +367,12 @@ struct ContinentCountriesView: View {
                     } label: {
                         Text(mode.rawValue)
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(filterMode == mode ? .white : .black)
+                            .foregroundStyle(filterMode == mode ? .white : Color.appInk)
                             .padding(.horizontal, 18)
                             .padding(.vertical, 8)
-                            .background(filterMode == mode ? Color.black : Color.white)
+                            .background(filterMode == mode ? Color.appSurface : Color.appCard)
                             .clipShape(Capsule())
-                            .overlay(filterMode == mode ? nil : Capsule().stroke(Color(hex: "#E2E2E2"), lineWidth: 1))
+                            .overlay(filterMode == mode ? nil : Capsule().stroke(Color.appLine, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                 }
@@ -404,7 +397,7 @@ struct CountryListRow: View {
 
             Text(country.name)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color(hex: "#1b1b1b"))
+                .foregroundStyle(Color.appInk)
 
             Spacer()
 
@@ -424,11 +417,11 @@ struct CountryListRow: View {
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color(hex: "#CCCCCC"))
+                .foregroundStyle(Color.appInk3)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(Color.white)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 1)
     }

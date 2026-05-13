@@ -18,7 +18,7 @@ struct ComparisonView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "#F7F7F7").ignoresSafeArea()
+                Color.appPaper.ignoresSafeArea()
                 switch viewModel.state {
                 case .idle:
                     searchView
@@ -38,7 +38,7 @@ struct ComparisonView: View {
                         Button { viewModel.resetToIdle() } label: {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                                .foregroundStyle(Color.appInk)
                         }
                     }
                 }
@@ -75,16 +75,16 @@ struct ComparisonView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("FRIEND'S EMAIL")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                         .tracking(0.8)
 
                     HStack(spacing: 12) {
                         Image(systemName: "envelope")
                             .font(.system(size: 15))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
                         TextField("friend@example.com", text: $viewModel.emailToCompare)
                             .font(.system(size: 15))
-                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                            .foregroundStyle(Color.appInk)
                             .textInputAutocapitalization(.never)
                             .keyboardType(.emailAddress)
                             .autocorrectionDisabled()
@@ -95,7 +95,7 @@ struct ComparisonView: View {
                     }
                     .padding(.horizontal, 16)
                     .frame(height: 50)
-                    .background(Color(hex: "#F3F3F3"))
+                    .background(Color.appPaper2)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
                     Button {
@@ -106,14 +106,14 @@ struct ComparisonView: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
-                            .background(Color(hex: "#1b1b1b"))
+                            .background(Color.appSurface)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                     .disabled(viewModel.emailToCompare.isEmpty)
                     .opacity(viewModel.emailToCompare.isEmpty ? 0.5 : 1)
                 }
                 .padding(16)
-                .background(Color.white)
+                .background(Color.appCard)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
                 .padding(.horizontal, 16)
@@ -125,7 +125,7 @@ struct ComparisonView: View {
                         .font(.system(size: 12))
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .foregroundStyle(Color(hex: "#9E9E9E"))
+                .foregroundStyle(Color.appInk3)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
             }
@@ -135,8 +135,8 @@ struct ComparisonView: View {
     private var heroEntryCard: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(spacing: -12) {
-                avatarCircle(initials: myInitials, bg: Color(hex: "#3A3A3A"))
-                avatarCircle(initials: "?", bg: Color(hex: "#1b1b1b"))
+                avatarCircle(initials: myInitials, bg: Color.appSurface.opacity(0.7))
+                avatarCircle(initials: "?", bg: Color.appSurface)
             }
             VStack(alignment: .leading, spacing: 8) {
                 Text("Compare your travels\nwith anyone")
@@ -150,7 +150,7 @@ struct ComparisonView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(Color(hex: "#1b1b1b"))
+        .background(Color.appSurface)
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
@@ -162,7 +162,7 @@ struct ComparisonView: View {
                 .scaleEffect(1.3)
             Text("Loading comparison...")
                 .font(.system(size: 14))
-                .foregroundStyle(Color(hex: "#9E9E9E"))
+                .foregroundStyle(Color.appInk3)
         }
     }
 
@@ -185,7 +185,7 @@ struct ComparisonView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(24)
-                .background(Color(hex: "#1b1b1b"))
+                .background(Color.appSurface)
                 .clipShape(RoundedRectangle(cornerRadius: 18))
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
@@ -196,7 +196,7 @@ struct ComparisonView: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
-                        .background(Color(hex: "#1b1b1b"))
+                        .background(Color.appSurface)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .padding(.horizontal, 16)
@@ -223,7 +223,6 @@ struct ComparisonView: View {
                         .padding(.top, 16)
                 }
 
-                // Mode chips
                 HStack(spacing: 8) {
                     modeChip("Visited", mode: .visited)
                     modeChip("Wishlist", mode: .wishlist)
@@ -234,7 +233,7 @@ struct ComparisonView: View {
                 if viewModel.currentComparison.totalUnique == 0 {
                     Text("No \(viewModel.selectedMode == .visited ? "visited" : "wishlisted") countries to compare")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 32)
                         .padding(.horizontal, 32)
@@ -271,29 +270,25 @@ struct ComparisonView: View {
         let friendName = friendShortName(from: profile)
 
         return VStack(alignment: .leading, spacing: 16) {
-            // Top row: avatars + email pill
             HStack(alignment: .center) {
                 HStack(spacing: -14) {
-                    // Your avatar: white circle, dark text
                     Text(myInitials)
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .foregroundStyle(Color.appInk)
                         .frame(width: 44, height: 44)
-                        .background(Color.white)
+                        .background(Color.appCard)
                         .clipShape(Circle())
-                    // Friend's avatar: blue circle, white text
                     Text(friendInitials(from: profile))
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
                         .background(Color(hex: "#6C8EFF"))
                         .clipShape(Circle())
-                        .overlay(Circle().stroke(Color(hex: "#1b1b1b"), lineWidth: 2))
+                        .overlay(Circle().stroke(Color.appSurface, lineWidth: 2))
                 }
 
                 Spacer()
 
-                // Email pill
                 Text(profile.email)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.85))
@@ -304,7 +299,6 @@ struct ComparisonView: View {
                     .clipShape(Capsule())
             }
 
-            // "YOU & JOHN" label + big title
             VStack(alignment: .leading, spacing: 6) {
                 Text("YOU & \(friendName.uppercased())")
                     .font(.system(size: 12, weight: .semibold))
@@ -318,12 +312,10 @@ struct ComparisonView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            // Divider
             Rectangle()
                 .fill(Color.white.opacity(0.15))
                 .frame(height: 1)
 
-            // Stats row
             HStack(spacing: 0) {
                 statColumn(value: "\(sharedCount)", label: "Together")
                 Rectangle().fill(Color.white.opacity(0.15)).frame(width: 1, height: 44)
@@ -334,7 +326,7 @@ struct ComparisonView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(Color(hex: "#111111"))
+        .background(Color.appSurface)
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
@@ -354,19 +346,19 @@ struct ComparisonView: View {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(hex: "#F3F3F3"))
+                    .fill(Color.appInk.opacity(0.06))
                     .frame(width: 44, height: 44)
                 Image(systemName: "mappin.and.ellipse")
                     .font(.system(size: 18))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Plan a trip together")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                 Text("\(matchCount) wishlist \(matchCount == 1 ? "match" : "matches")")
                     .font(.system(size: 13))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
             }
             Spacer()
             Button {
@@ -377,12 +369,12 @@ struct ComparisonView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 9)
-                    .background(Color(hex: "#1b1b1b"))
+                    .background(Color.appSurface)
                     .clipShape(Capsule())
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
     }
@@ -391,12 +383,12 @@ struct ComparisonView: View {
         Button { viewModel.selectedMode = mode } label: {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(viewModel.selectedMode == mode ? .white : Color(hex: "#6B6B6B"))
+                .foregroundStyle(viewModel.selectedMode == mode ? .white : Color.appInk2)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 8)
-                .background(viewModel.selectedMode == mode ? Color(hex: "#1b1b1b") : Color.white)
+                .background(viewModel.selectedMode == mode ? Color.appSurface : Color.appCard)
                 .clipShape(Capsule())
-                .overlay(Capsule().stroke(viewModel.selectedMode == mode ? Color.clear : Color(hex: "#E2E2E2"), lineWidth: 1))
+                .overlay(Capsule().stroke(viewModel.selectedMode == mode ? Color.clear : Color.appLine, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -405,7 +397,7 @@ struct ComparisonView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(label)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color(hex: "#9E9E9E"))
+                .foregroundStyle(Color.appInk3)
                 .tracking(0.8)
                 .padding(.horizontal, 16)
 
@@ -420,7 +412,7 @@ struct ComparisonView: View {
                                 .frame(width: 40, height: 36)
                             Text(country.name)
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                                .foregroundStyle(Color.appInk)
                             Spacer()
                             Text(badge.label)
                                 .font(.system(size: 10, weight: .bold))
@@ -431,11 +423,11 @@ struct ComparisonView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 6))
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#CCCCCC"))
+                                .foregroundStyle(Color.appInk3)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
-                        .background(Color.white)
+                        .background(Color.appCard)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 1)
                     }
@@ -455,7 +447,7 @@ struct ComparisonView: View {
             .frame(width: 38, height: 38)
             .background(bg)
             .clipShape(Circle())
-            .overlay(Circle().stroke(Color(hex: "#1b1b1b"), lineWidth: 2))
+            .overlay(Circle().stroke(Color.appSurface, lineWidth: 2))
     }
 
     private var myInitials: String {
@@ -516,7 +508,7 @@ enum ComparisonBadge {
     var pillForeground: Color {
         switch self {
         case .yours:   return Color(hex: "#1E7F4E")
-        case .shared:  return Color(hex: "#1b1b1b")
+        case .shared:  return Color.appInk
         case .theirs:  return Color(hex: "#9E4E00")
         }
     }
@@ -524,7 +516,7 @@ enum ComparisonBadge {
     var pillBackground: Color {
         switch self {
         case .yours:   return Color(hex: "#1E7F4E").opacity(0.1)
-        case .shared:  return Color(hex: "#1b1b1b").opacity(0.08)
+        case .shared:  return Color.appInk.opacity(0.08)
         case .theirs:  return Color(hex: "#F37826").opacity(0.15)
         }
     }
@@ -534,8 +526,6 @@ enum ComparisonBadge {
 
 @MainActor
 final class ComparisonViewModel: ObservableObject {
-    // MARK: - State Management
-
     enum ViewState: Equatable {
         case idle
         case loading
@@ -569,8 +559,6 @@ final class ComparisonViewModel: ObservableObject {
         self.wishlistComparison = TravelComparisonResult(yours: [], shared: [], theirs: [], mode: .wishlist)
         self.allCountries = countryService.loadCountries()
     }
-
-    // MARK: - Public Methods
 
     func searchUser(yourVisits: [String: Visit]) async {
         state = .loading
@@ -638,8 +626,6 @@ final class ComparisonViewModel: ObservableObject {
         wishlistComparison = TravelComparisonResult(yours: [], shared: [], theirs: [], mode: .wishlist)
     }
 
-    // MARK: - Error Handling
-
     private func userFriendlyErrorMessage(from error: Error) -> String {
         let nsError = error as NSError
         if nsError.domain == NSURLErrorDomain {
@@ -662,8 +648,6 @@ final class ComparisonViewModel: ObservableObject {
         }
         return "Failed to load user: \(error.localizedDescription)"
     }
-
-    // MARK: - Helpers
 
     private func getCountries(for countryIds: [String]) -> [Country] {
         let countryDict = Dictionary(uniqueKeysWithValues: allCountries.map { ($0.id, $0) })

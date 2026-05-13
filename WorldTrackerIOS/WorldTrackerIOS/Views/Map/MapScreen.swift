@@ -15,7 +15,7 @@ struct MapScreen: View {
 
     var onNavigateToStats: () -> Void = {}
     var onNavigateToCountries: () -> Void = {}
-    
+
     @State private var showSyncStatus = true
     @State private var selectedCountryForSheet: SelectedCountry?
     @State private var selectedCountryForDetail: Country?
@@ -26,46 +26,36 @@ struct MapScreen: View {
     @State private var allCountries: [Country] = []
     @State private var isPopupExpanded = false
     @State private var showingMemoriesSheet = false
-    
+
     enum FilterMode: String, CaseIterable {
         case all = "All"
         case visited = "Visited"
         case wishlist = "Wishlist"
     }
-    
-    // Filtered country IDs based on filter mode
+
     private var filteredVisitedCountryIDs: Set<String> {
         switch filterMode {
-        case .all, .visited:
-            return appState.visitedCountryIDs
-        case .wishlist:
-            return []
+        case .all, .visited: return appState.visitedCountryIDs
+        case .wishlist:      return []
         }
     }
-    
+
     private var filteredWantToVisitCountryIDs: Set<String> {
         switch filterMode {
-        case .all:
-            return appState.wantToVisitCountryIDs
-        case .visited:
-            return []
-        case .wishlist:
-            return appState.wantToVisitCountryIDs
+        case .all:     return appState.wantToVisitCountryIDs
+        case .visited: return []
+        case .wishlist: return appState.wantToVisitCountryIDs
         }
     }
-    
-    // Helper to determine if sync status is showing an error
+
     private var isSyncError: Bool {
-        if case .error = appState.syncStatus {
-            return true
-        }
+        if case .error = appState.syncStatus { return true }
         return false
     }
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topLeading) {
-                // OPTIMIZATION: Isolate map in separate view to prevent parent re-renders
                 MapContainerView(
                     visitedCountryIDs: filteredVisitedCountryIDs,
                     wantToVisitCountryIDs: filteredWantToVisitCountryIDs,
@@ -78,9 +68,7 @@ struct MapScreen: View {
                 )
                 .ignoresSafeArea()
 
-                // Full overlay layout
                 VStack(spacing: 0) {
-                    // Top bar: eye button (left) + stats pill (right)
                     HStack(alignment: .center, spacing: 12) {
                         eyeButton
                         Spacer()
@@ -92,7 +80,6 @@ struct MapScreen: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
 
-                    // Sync status banner
                     if showSyncStatus && (showingMapUI || isSyncError) {
                         SyncStatusView(
                             status: appState.syncStatus,
@@ -110,7 +97,6 @@ struct MapScreen: View {
 
                     Spacer()
 
-                    // Bottom section
                     if showingMapUI {
                         VStack(spacing: 12) {
                             HStack(alignment: .bottom) {
@@ -128,7 +114,6 @@ struct MapScreen: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
 
-                    // "Where have you been?" popup — always visible
                     whereHaveYouBeenPopup
                         .padding(.bottom, 12)
                 }
@@ -178,7 +163,7 @@ struct MapScreen: View {
             }
         }
     }
-    
+
     // MARK: - Eye Button
 
     private var eyeButton: some View {
@@ -189,9 +174,9 @@ struct MapScreen: View {
         } label: {
             Image(systemName: showingMapUI ? "eye" : "eye.slash")
                 .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(Color.appInk)
                 .frame(width: 40, height: 40)
-                .background(Color.white)
+                .background(Color.appCard)
                 .clipShape(Circle())
                 .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
         }
@@ -207,7 +192,7 @@ struct MapScreen: View {
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(canZoomIn ? Color.black : Color.black.opacity(0.3))
+                    .foregroundStyle(canZoomIn ? Color.appInk : Color.appInk3)
                     .frame(width: 40, height: 36)
                     .contentShape(Rectangle())
             }
@@ -215,7 +200,7 @@ struct MapScreen: View {
             .disabled(!canZoomIn)
 
             Rectangle()
-                .fill(Color(hex: "#EEEEEE"))
+                .fill(Color.appLine)
                 .frame(width: 28, height: 1)
 
             Button {
@@ -223,64 +208,47 @@ struct MapScreen: View {
             } label: {
                 Image(systemName: "minus")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(canZoomOut ? Color.black : Color.black.opacity(0.3))
+                    .foregroundStyle(canZoomOut ? Color.appInk : Color.appInk3)
                     .frame(width: 40, height: 36)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(!canZoomOut)
         }
-        .background(Color.white)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
     }
-    
-    private var canZoomIn: Bool {
-        mapZoomLevel != .max
-    }
-    
-    private var canZoomOut: Bool {
-        mapZoomLevel != .world
-    }
-    
+
+    private var canZoomIn: Bool { mapZoomLevel != .max }
+    private var canZoomOut: Bool { mapZoomLevel != .world }
+
     private func zoomIn() {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.prepare()
         generator.impactOccurred()
-        
         switch mapZoomLevel {
-        case .world:
-            mapZoomLevel = .continent
-        case .continent:
-            mapZoomLevel = .country
-        case .country:
-            mapZoomLevel = .city
-        case .city:
-            mapZoomLevel = .max
-        case .max:
-            break
+        case .world:     mapZoomLevel = .continent
+        case .continent: mapZoomLevel = .country
+        case .country:   mapZoomLevel = .city
+        case .city:      mapZoomLevel = .max
+        case .max:       break
         }
     }
-    
+
     private func zoomOut() {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.prepare()
         generator.impactOccurred()
-        
         switch mapZoomLevel {
-        case .max:
-            mapZoomLevel = .city
-        case .city:
-            mapZoomLevel = .country
-        case .country:
-            mapZoomLevel = .continent
-        case .continent:
-            mapZoomLevel = .world
-        case .world:
-            break
+        case .max:       mapZoomLevel = .city
+        case .city:      mapZoomLevel = .country
+        case .country:   mapZoomLevel = .continent
+        case .continent: mapZoomLevel = .world
+        case .world:     break
         }
     }
-    
+
     // MARK: - Filter Picker
 
     private var filterPicker: some View {
@@ -294,10 +262,10 @@ struct MapScreen: View {
                 } label: {
                     Text(mode.rawValue)
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(filterMode == mode ? Color.white : Color.black)
+                        .foregroundStyle(filterMode == mode ? Color.white : Color.appInk)
                         .padding(.horizontal, 22)
                         .padding(.vertical, 10)
-                        .background(filterMode == mode ? Color.black : Color.white)
+                        .background(filterMode == mode ? Color.appSurface : Color.appCard)
                         .clipShape(Capsule())
                         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                 }
@@ -306,7 +274,7 @@ struct MapScreen: View {
             Spacer()
         }
     }
-    
+
     // MARK: - Stats Card
 
     private var statsCard: some View {
@@ -314,52 +282,52 @@ struct MapScreen: View {
             HStack(spacing: 4) {
                 Image(systemName: "globe")
                     .font(.system(size: 12))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
                 Text("VISITED")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
                     .tracking(0.5)
             }
 
             Rectangle()
-                .fill(Color(hex: "#E0E0E0"))
+                .fill(Color.appLine)
                 .frame(width: 1, height: 16)
 
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text("\(appState.visitedCountryIDs.count)")
                     .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(Color.black)
+                    .foregroundStyle(Color.appInk)
                 Text("/ \(totalCountries)")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
             }
 
             if totalCountries > 0 {
                 Rectangle()
-                    .fill(Color(hex: "#E0E0E0"))
+                    .fill(Color.appLine)
                     .frame(width: 1, height: 16)
 
                 let pct = Double(appState.visitedCountryIDs.count) / Double(totalCountries) * 100
                 Text(String(format: "%.1f%% WORLD", pct))
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Color(hex: "#9E9E9E"))
+                    .foregroundStyle(Color.appInk3)
                     .tracking(0.5)
             }
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 14)
-        .background(Color.white)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
     }
-    
+
     // MARK: - Legend Card
 
     private var legendCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("MAP LEGEND")
                 .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(Color(hex: "#9E9E9E"))
+                .foregroundStyle(Color.appInk3)
                 .tracking(1.2)
 
             VStack(alignment: .leading, spacing: 8) {
@@ -370,7 +338,7 @@ struct MapScreen: View {
                             .frame(width: 10, height: 10)
                         Text("VISITED")
                             .font(.system(size: 10, weight: .black))
-                            .foregroundStyle(Color.black)
+                            .foregroundStyle(Color.appInk)
                             .tracking(0.5)
                     }
                 }
@@ -382,19 +350,19 @@ struct MapScreen: View {
                             .frame(width: 10, height: 10)
                         Text("WISHLIST")
                             .font(.system(size: 10, weight: .black))
-                            .foregroundStyle(Color.black)
+                            .foregroundStyle(Color.appInk)
                             .tracking(0.5)
                     }
                 }
             }
         }
         .padding(14)
-        .background(Color.white.opacity(0.9))
+        .background(Color.appCard.opacity(0.92))
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
     }
-    
+
     // MARK: - Where Have You Been Popup
 
     private var recentVisits: [(country: Country, visit: Visit)] {
@@ -423,10 +391,9 @@ struct MapScreen: View {
     private var whereHaveYouBeenPopup: some View {
         VStack(spacing: 0) {
 
-            // MARK: Drag handle — always visible, toggles on tap/swipe
             VStack(spacing: 0) {
                 RoundedRectangle(cornerRadius: 2.5)
-                    .fill(Color(hex: "#CCCCCC"))
+                    .fill(Color.appInk3)
                     .frame(width: 36, height: 5)
                     .padding(.top, 14)
                     .padding(.bottom, 16)
@@ -434,7 +401,7 @@ struct MapScreen: View {
                 HStack {
                     Text("Where have you been?")
                         .font(.system(size: 26, weight: .bold))
-                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .foregroundStyle(Color.appInk)
                     Spacer()
                 }
                 .padding(.horizontal, 20)
@@ -458,10 +425,8 @@ struct MapScreen: View {
                     }
             )
 
-            // MARK: Expanded content
             if isPopupExpanded {
 
-                // Quick action buttons (Memories + Stats)
                 HStack(spacing: 12) {
                     quickActionButton(icon: "photo.stack.fill", label: "Memories") {
                         showingMemoriesSheet = true
@@ -474,11 +439,10 @@ struct MapScreen: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
 
-                // Recent visits header
                 HStack {
                     Text("Recent visits")
                         .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .foregroundStyle(Color.appInk)
                     Spacer()
                     Button {
                         onNavigateToCountries()
@@ -487,10 +451,10 @@ struct MapScreen: View {
                         HStack(spacing: 4) {
                             Text("See all")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                                .foregroundStyle(Color.appInk)
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Color(hex: "#1b1b1b"))
+                                .foregroundStyle(Color.appInk)
                         }
                     }
                     .buttonStyle(.plain)
@@ -498,12 +462,11 @@ struct MapScreen: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
 
-                // Recent visits list
                 let recent = recentVisits
                 if recent.isEmpty {
                     Text("Mark countries as visited to see them here")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
@@ -519,7 +482,7 @@ struct MapScreen: View {
                                 HStack(spacing: 14) {
                                     ZStack {
                                         Circle()
-                                            .fill(Color(hex: "#F3F3F3"))
+                                            .fill(Color.appPaper2)
                                             .frame(width: 48, height: 48)
                                         Text(item.country.flagEmoji)
                                             .font(.system(size: 24))
@@ -528,12 +491,12 @@ struct MapScreen: View {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(item.country.name)
                                             .font(.system(size: 15, weight: .semibold))
-                                            .foregroundStyle(Color(hex: "#1b1b1b"))
+                                            .foregroundStyle(Color.appInk)
                                         let subtitle = visitSubtitle(item.visit)
                                         if !subtitle.isEmpty {
                                             Text(subtitle)
                                                 .font(.system(size: 13))
-                                                .foregroundStyle(Color(hex: "#9E9E9E"))
+                                                .foregroundStyle(Color.appInk3)
                                         }
                                     }
 
@@ -541,7 +504,7 @@ struct MapScreen: View {
 
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                                        .foregroundStyle(Color.appInk3)
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 14)
@@ -557,7 +520,7 @@ struct MapScreen: View {
                 }
             }
         }
-        .background(Color.white)
+        .background(Color.appCard)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: -4)
         .padding(.horizontal, 16)
@@ -568,7 +531,7 @@ struct MapScreen: View {
             VStack(spacing: 10) {
                 ZStack {
                     Circle()
-                        .fill(Color(hex: "#1b1b1b"))
+                        .fill(Color.appSurface)
                         .frame(width: 44, height: 44)
                     Image(systemName: icon)
                         .font(.system(size: 18, weight: .medium))
@@ -576,59 +539,44 @@ struct MapScreen: View {
                 }
                 Text(label)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 100)
-            .background(Color(hex: "#F3F3F3"))
+            .background(Color.appPaper2)
             .clipShape(RoundedRectangle(cornerRadius: 18))
         }
         .buttonStyle(.plain)
     }
 
     // MARK: - Data Management
-    
+
     private func handleCountryTap(countryID: String) {
         selectedCountryForSheet = SelectedCountry(id: countryID)
     }
-    
+
     private func getBitmojiAnnotations() -> [CountryBitmojiAnnotation] {
-        // Only show bitmojis at continent zoom or closer to avoid clutter
-        guard mapZoomLevel != .world else {
-            return []
-        }
-        
-        // Only show bitmojis for visited countries when in visited or all mode
-        guard filterMode == .all || filterMode == .visited else {
-            return []
-        }
-        
+        guard mapZoomLevel != .world else { return [] }
+        guard filterMode == .all || filterMode == .visited else { return [] }
+
         let countries = CountryDataService.shared.loadCountries()
-        
+
         let annotations: [CountryBitmojiAnnotation] = appState.visitedCountryIDs.compactMap { countryID -> CountryBitmojiAnnotation? in
-            guard let country = countries.first(where: { $0.id == countryID }) else {
-                return nil
-            }
-            
+            guard let country = countries.first(where: { $0.id == countryID }) else { return nil }
             let visit = appState.visit(for: countryID)
             return CountryBitmojiAnnotation(country: country, visit: visit)
         }
-        
+
         return annotations
     }
-    
+
     private func handleAuthStateChange() async {
-        guard authService.isSignedIn else {
-            return
-        }
+        guard authService.isSignedIn else { return }
         await refreshMapData()
     }
-    
+
     private func refreshMapData() async {
-        guard authService.isSignedIn else {
-            return
-        }
-        
+        guard authService.isSignedIn else { return }
         appState.refreshFromPersistence()
         await appState.syncWithCloud()
     }
@@ -641,30 +589,23 @@ struct SelectedCountry: Identifiable {
 }
 
 enum MapZoomLevel: Equatable {
-    case world      // Global view (120° span)
-    case continent  // Continental view (60° span)
-    case country    // Country view (20° span)
-    case city       // City view (5° span)
-    case max        // Maximum zoom (1° span)
-    
+    case world
+    case continent
+    case country
+    case city
+    case max
+
     var latitudeDelta: CLLocationDegrees {
         switch self {
-        case .world:
-            return 120
-        case .continent:
-            return 60
-        case .country:
-            return 20
-        case .city:
-            return 5
-        case .max:
-            return 1
+        case .world:     return 120
+        case .continent: return 60
+        case .country:   return 20
+        case .city:      return 5
+        case .max:       return 1
         }
     }
-    
-    var longitudeDelta: CLLocationDegrees {
-        return latitudeDelta
-    }
+
+    var longitudeDelta: CLLocationDegrees { latitudeDelta }
 }
 
 // MARK: - Country Quick Action Sheet
@@ -683,9 +624,8 @@ struct CountryQuickActionSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Drag handle
             RoundedRectangle(cornerRadius: 2.5)
-                .fill(Color(hex: "#CCCCCC"))
+                .fill(Color.appInk3)
                 .frame(width: 36, height: 5)
                 .padding(.top, 12)
                 .padding(.bottom, 20)
@@ -695,35 +635,33 @@ struct CountryQuickActionSheet: View {
                 ProgressView()
                 Spacer()
             } else if let country = country {
-                // Country hero
                 VStack(spacing: 10) {
                     Text(country.flagEmoji)
                         .font(.system(size: 60))
 
                     Text(country.name)
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .foregroundStyle(Color.appInk)
 
                     HStack(spacing: 8) {
                         Text(country.continent.displayName)
                             .font(.system(size: 13))
-                            .foregroundStyle(Color(hex: "#9E9E9E"))
+                            .foregroundStyle(Color.appInk3)
 
                         if isVisited {
-                            statusPill("Visited", fg: Color(hex: "#2E9E5B"), bg: Color(hex: "#F0FFF4"))
+                            statusPill("Visited", fg: Color(hex: "#2E9E5B"), bg: Color.appSuccess.opacity(0.12))
                         } else if wantToVisit {
-                            statusPill("Wishlist", fg: Color(hex: "#1D8FC2"), bg: Color(hex: "#EAF6FE"))
+                            statusPill("Wishlist", fg: Color(hex: "#1D8FC2"), bg: Color(hex: "#4A90D9").opacity(0.12))
                         }
                     }
                 }
                 .padding(.bottom, 24)
 
-                // Action card
                 VStack(spacing: 0) {
                     actionRow(
                         icon: "checkmark.circle.fill",
-                        iconBg: isVisited ? Color(hex: "#F0FFF4") : Color(hex: "#F3F3F3"),
-                        iconFg: isVisited ? Color(hex: "#2E9E5B") : Color(hex: "#9E9E9E"),
+                        iconBg: isVisited ? Color.appSuccess.opacity(0.12) : Color.appInk.opacity(0.06),
+                        iconFg: isVisited ? Color.appSuccess : Color.appInk3,
                         title: isVisited ? "Mark as Not Visited" : "Mark as Visited",
                         chevron: false,
                         disabled: false
@@ -733,8 +671,8 @@ struct CountryQuickActionSheet: View {
 
                     actionRow(
                         icon: wantToVisit ? "star.fill" : "star",
-                        iconBg: wantToVisit ? Color(hex: "#EAF6FE") : Color(hex: "#F3F3F3"),
-                        iconFg: wantToVisit ? Color(hex: "#4A90D9") : Color(hex: "#9E9E9E"),
+                        iconBg: wantToVisit ? Color(hex: "#4A90D9").opacity(0.12) : Color.appInk.opacity(0.06),
+                        iconFg: wantToVisit ? Color(hex: "#4A90D9") : Color.appInk3,
                         title: wantToVisit ? "Remove from Wishlist" : "Add to Wishlist",
                         chevron: false,
                         disabled: isVisited
@@ -744,14 +682,14 @@ struct CountryQuickActionSheet: View {
 
                     actionRow(
                         icon: "arrow.right.circle.fill",
-                        iconBg: Color(hex: "#EAF4FF"),
+                        iconBg: Color(hex: "#4A90D9").opacity(0.12),
                         iconFg: Color(hex: "#4A90D9"),
                         title: "View Details",
                         chevron: true,
                         disabled: false
                     ) { onViewDetails(country) }
                 }
-                .background(Color.white)
+                .background(Color.appCard)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
                 .padding(.horizontal, 16)
@@ -762,15 +700,15 @@ struct CountryQuickActionSheet: View {
                 VStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.system(size: 36))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                     Text("Country not found")
                         .font(.system(size: 15))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 Spacer()
             }
         }
-        .background(Color(hex: "#F7F7F7"))
+        .background(Color.appPaper)
         .task { await loadCountry() }
     }
 
@@ -795,12 +733,12 @@ struct CountryQuickActionSheet: View {
                 }
                 Text(title)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(disabled ? Color(hex: "#CCCCCC") : Color(hex: "#1b1b1b"))
+                    .foregroundStyle(disabled ? Color.appInk3 : Color.appInk)
                 Spacer()
                 if chevron {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                        .foregroundStyle(Color.appInk3)
                 }
             }
             .padding(.horizontal, 16)
@@ -831,7 +769,6 @@ struct CountryQuickActionSheet: View {
 }
 
 // MARK: - Map Container (Optimization)
-/// Isolated map container to prevent unnecessary re-renders from parent view state changes
 struct MapContainerView: View {
     let visitedCountryIDs: Set<String>
     let wantToVisitCountryIDs: Set<String>
@@ -839,7 +776,7 @@ struct MapContainerView: View {
     let bitmojiAnnotations: [CountryBitmojiAnnotation]
     let onCountryTapped: ((String) -> Void)?
     let onBitmojiTapped: ((String) -> Void)?
-    
+
     var body: some View {
         VisitedCountriesMapView(
             visitedCountryIDs: visitedCountryIDs,
@@ -875,16 +812,15 @@ struct MapMemoriesSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 Text("Memories")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Color(hex: "#1b1b1b"))
+                    .foregroundStyle(Color.appInk)
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 26))
-                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                        .foregroundStyle(Color.appInk3)
                 }
                 .buttonStyle(.plain)
             }
@@ -897,13 +833,13 @@ struct MapMemoriesSheet: View {
                 VStack(spacing: 12) {
                     Image(systemName: "photo.stack")
                         .font(.system(size: 48))
-                        .foregroundStyle(Color(hex: "#CCCCCC"))
+                        .foregroundStyle(Color.appInk3)
                     Text("No memories yet")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#1b1b1b"))
+                        .foregroundStyle(Color.appInk)
                     Text("Add photos when marking countries\nas visited to see them here")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color(hex: "#9E9E9E"))
+                        .foregroundStyle(Color.appInk3)
                         .multilineTextAlignment(.center)
                 }
                 Spacer()
@@ -924,7 +860,7 @@ struct MapMemoriesSheet: View {
                                             .clipped()
                                     } else {
                                         Rectangle()
-                                            .fill(Color(hex: "#F3F3F3"))
+                                            .fill(Color.appPaper2)
                                             .frame(width: geo.size.width, height: geo.size.width)
                                     }
 
@@ -953,8 +889,6 @@ struct MapMemoriesSheet: View {
                 }
             }
         }
-        .background(Color(hex: "#F7F7F7"))
+        .background(Color.appPaper)
     }
 }
-
-
