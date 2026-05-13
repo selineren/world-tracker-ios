@@ -16,6 +16,7 @@ struct CountryDetailScreen: View {
     @State private var showDatePicker = false
     @State private var fullScreenPhoto: VisitPhoto?
     @State private var showAllPhotos = false
+    @FocusState private var isEditingNotes: Bool
 
     // MARK: - Bindings
 
@@ -75,6 +76,13 @@ struct CountryDetailScreen: View {
         .background(Color.appPaper)
         .navigationTitle(country.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { isEditingNotes = false }
+                    .fontWeight(.semibold)
+            }
+        }
         .onChange(of: selectedPhotoItem) { _, newValue in
             Task { await loadPhoto(from: newValue) }
         }
@@ -297,6 +305,7 @@ struct CountryDetailScreen: View {
                     .frame(minHeight: 100)
                     .padding(12)
                     .scrollContentBackground(.hidden)
+                    .focused($isEditingNotes)
             }
             .background(Color.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 14))

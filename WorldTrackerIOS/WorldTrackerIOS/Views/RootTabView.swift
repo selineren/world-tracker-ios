@@ -11,9 +11,11 @@ import FirebaseAuth
 struct RootTabView: View {
     @EnvironmentObject private var authService: AuthService
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var achievementNotifier: AchievementNotifier
 
-    // Track selected tab - always starts on Map when view is created
     @State private var selectedTab: Tab = .map
+    @State private var hasSeededAchievements = false
+    @State private var achievementCheckTask: Task<Void, Never>?
 
     enum Tab {
         case map
@@ -75,6 +77,27 @@ struct RootTabView: View {
         .task {
             // Sync with cloud when tab view appears (user is guaranteed to be signed in)
             await appState.syncWithCloud()
+        }
+        .onChange(of: appState.visits) { _, _ in
+            let countries = CountryDataService.shared.loadCountries()
+            if !hasSeededAchievements {
+                hasSeededAchievements = true
+                if achievementNotifier.hasPriorSeenData {
+                    // Normal session: seed so existing achievements don't re-fire on launch.
+                    achievementNotifier.seed(visits: appState.visits, countries: countries)
+                    return
+                }
+                // seenIDs is empty (fresh install or debug reset): fall through to check.
+            }
+            achievementCheckTask?.cancel()
+            achievementCheckTask = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.5))
+                guard !Task.isCancelled else { return }
+                achievementNotifier.check(
+                    visits: appState.visits,
+                    countries: CountryDataService.shared.loadCountries()
+                )
+            }
         }
     }
 }

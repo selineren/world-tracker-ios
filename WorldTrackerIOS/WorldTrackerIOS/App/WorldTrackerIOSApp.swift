@@ -15,6 +15,7 @@ import CoreText
 @main
 struct WorldTrackerIOSApp: App {
     @StateObject private var authService = AuthService()
+    @StateObject private var achievementNotifier = AchievementNotifier()
 
     private let container: ModelContainer
     @StateObject private var appState: AppState
@@ -86,6 +87,7 @@ struct WorldTrackerIOSApp: App {
             AuthGatedRootView()
                 .environmentObject(appState)
                 .environmentObject(authService)
+                .environmentObject(achievementNotifier)
                 .task(id: authService.authState) {
                     await handleAuthStateChange()
                 }
@@ -100,9 +102,13 @@ struct WorldTrackerIOSApp: App {
     private func handleAuthStateChange() async {
         switch authService.authState {
         case .signedIn:
+            if let userId = authService.user?.uid {
+                achievementNotifier.configure(for: userId)
+            }
             await appState.handleSignIn()
         case .signedOut:
             appState.handleSignOut()
+            achievementNotifier.reset()
         case .unknown:
             break
         }
@@ -112,40 +118,51 @@ struct WorldTrackerIOSApp: App {
 
 struct AuthGatedRootView: View {
     @EnvironmentObject private var authService: AuthService
+    @EnvironmentObject private var achievementNotifier: AchievementNotifier
 
     var body: some View {
-        Group {
-            switch authService.authState {
-            case .signedIn:
-                RootTabView()
-                    .id("signed-in-\(authService.signInCounter)")
-                    .transition(.opacity)
-                    .onAppear {
-                        #if DEBUG
-                        print("📱 Showing RootTabView (signed in)")
-                        #endif
-                    }
+        ZStack {
+            Group {
+                switch authService.authState {
+                case .signedIn:
+                    RootTabView()
+                        .id("signed-in-\(authService.signInCounter)")
+                        .transition(.opacity)
+                        .onAppear {
+                            #if DEBUG
+                            print("📱 Showing RootTabView (signed in)")
+                            #endif
+                        }
 
-            case .signedOut:
-                AuthScreen()
-                    .transition(.opacity)
-                    .onAppear {
-                        #if DEBUG
-                        print("📱 Showing AuthScreen (signed out)")
-                        #endif
-                    }
+                case .signedOut:
+                    AuthScreen()
+                        .transition(.opacity)
+                        .onAppear {
+                            #if DEBUG
+                            print("📱 Showing AuthScreen (signed out)")
+                            #endif
+                        }
 
-            case .unknown:
-                LoadingView()
-                    .transition(.opacity)
-                    .onAppear {
-                        #if DEBUG
-                        print("📱 Showing LoadingView (unknown state)")
-                        #endif
-                    }
+                case .unknown:
+                    LoadingView()
+                        .transition(.opacity)
+                        .onAppear {
+                            #if DEBUG
+                            print("📱 Showing LoadingView (unknown state)")
+                            #endif
+                        }
+                }
+            }
+            .animation(.easeInOut(duration: 0.3), value: authService.authState)
+
+            if let achievement = achievementNotifier.pendingAchievements.first {
+                AchievementCelebrationOverlay(achievement: achievement) {
+                    achievementNotifier.dismissCurrent()
+                }
+                .id(achievement.id)
+                .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: authService.authState)
     }
 }
 
